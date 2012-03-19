@@ -69,7 +69,7 @@ end
 //-----------------------------------------------------------------
 reg rx_busy;
 reg uart_rx_r;
-reg [3:0] rx_count16;
+reg [1:0] rx_count4;
 reg [3:0] rx_bitcount;
 reg [7:0] rx_reg;
 
@@ -77,7 +77,7 @@ always @(posedge sys_clk) begin
 	if(sys_rst) begin
 		rx_done <= 1'b0;
 		rx_busy <= 1'b0;
-		rx_count16  <= 4'd0;
+		rx_count4  <= 2'd0;
 		rx_bitcount <= 4'd0;
 		break <= 1'b0;
 		uart_rx_r <= 1'b0;
@@ -90,13 +90,13 @@ always @(posedge sys_clk) begin
 			if(~rx_busy) begin // look for start bit
 				if(~uart_rx2 & uart_rx_r) begin // start bit found
 					rx_busy <= 1'b1;
-					rx_count16 <= 4'd7;
+					rx_count4 <= 2'd3;
 					rx_bitcount <= 4'd0;
 				end
 			end else begin
-				rx_count16 <= rx_count16 + 4'd1;
+				rx_count4 <= rx_count4 + 2'd1;
 
-				if(rx_count16 == 4'd0) begin // sample
+				if(rx_count4 == 2'd0) begin // sample
 					rx_bitcount <= rx_bitcount + 4'd1;
 
 					if(rx_bitcount == 4'd0) begin // verify startbit
@@ -122,7 +122,7 @@ end
 //-----------------------------------------------------------------
 reg tx_busy;
 reg [3:0] tx_bitcount;
-reg [3:0] tx_count16;
+reg [1:0] tx_count4;
 reg [7:0] tx_reg;
 
 always @(posedge sys_clk) begin
@@ -135,16 +135,16 @@ always @(posedge sys_clk) begin
 		if(tx_wr) begin
 			tx_reg <= tx_data;
 			tx_bitcount <= 4'd0;
-			tx_count16 <= 4'd1;
+			tx_count4 <= 2'd1;
 			tx_busy <= 1'b1;
 			uart_tx <= 1'b0;
 `ifdef SIMULATION
 			$display("UART: %c", tx_data);
 `endif
 		end else if(enable16 && tx_busy) begin
-			tx_count16  <= tx_count16 + 4'd1;
+			tx_count4 <= tx_count4 + 2'd1;
 
-			if(tx_count16 == 4'd0) begin
+			if(tx_count4 == 2'd0) begin
 				tx_bitcount <= tx_bitcount + 4'd1;
 				
 				if(tx_bitcount == 4'd8) begin

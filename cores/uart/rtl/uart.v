@@ -74,7 +74,7 @@ assign irq = (tx_event & tx_irq_en) | (rx_event & rx_irq_en);
 assign tx_data = csr_di[7:0];
 assign tx_wr = csr_selected & csr_we & (csr_a[2:0] == 3'b000);
 
-parameter default_divisor = clk_freq/baud/16;
+parameter default_divisor = clk_freq/baud/4;
 
 reg thru_en;
 reg break_en;
