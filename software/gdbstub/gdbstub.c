@@ -675,6 +675,7 @@ void handle_exception(unsigned int *registers)
     unsigned int stat;
     unsigned int uart_div;
     unsigned int dbg_ctrl;
+    unsigned int baud;
 
     /*
      * make sure break is disabled.
@@ -704,7 +705,11 @@ void handle_exception(unsigned int *registers)
 
     /* save UART divider and set own speed */
     uart_div = CSR_UART_DIVISOR;
-    CSR_UART_DIVISOR = CSR_FREQUENCY / 16 / GDBSTUB_UART_SPEED;
+    baud = CSR_DBG_BAUDRATE;
+    if (!baud) {
+        baud = GDBSTUB_UART_SPEED;
+    }
+    CSR_UART_DIVISOR = CSR_FREQUENCY / 4 / baud;
 
     /* reply to host that an exception has occured */
     if (gdb_connected) {
