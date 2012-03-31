@@ -11,7 +11,7 @@ all: monitor.bin monitor.rom
 	chmod -x $@
 
 monitor.rom: monitor.bin
-	$(MAKE) -C $(MMDIR)/tools
+	$(MAKE) -C $(MMDIR)/tools bin2hex
 	$(MMDIR)/tools/bin2hex $< $@ 512
 
 monitor.elf: linker.ld $(OBJECTS)
