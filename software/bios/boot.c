@@ -26,6 +26,7 @@
 #include <fatfs.h>
 #include <string.h>
 #include <irq.h>
+#include <net.h>
 
 #include <net/microudp.h>
 #include <net/tftp.h>
@@ -38,6 +39,7 @@
 
 #include "unlzma.h"
 #include "boot.h"
+#include "env.h"
 
 extern const struct board_desc *brd_desc;
 extern int rescue;
@@ -209,15 +211,6 @@ void serialboot(void)
 	}
 }
 
-#define LOCALIP1 192
-#define LOCALIP2 168
-#define LOCALIP3 0
-#define LOCALIP4 42
-#define REMOTEIP1 192
-#define REMOTEIP2 168
-#define REMOTEIP3 0
-#define REMOTEIP4 14
-
 static int tftp_get_v(unsigned int ip, const char *filename, char *buffer)
 {
 	int r;
@@ -234,25 +227,21 @@ void netboot(void)
 {
 	int size;
 	unsigned int cmdline_adr, initrdstart_adr, initrdend_adr;
-	unsigned int ip;
-	unsigned char *macadr = (unsigned char *)FLASH_OFFSET_MAC_ADDRESS;
 
 	printf("I: Booting from network...\n");
-	printf("I: MAC      : %02x:%02x:%02x:%02x:%02x:%02x\n", macadr[0], macadr[1], macadr[2], macadr[3], macadr[4], macadr[5]);
-	printf("I: Local IP : %d.%d.%d.%d\n", LOCALIP1, LOCALIP2, LOCALIP3, LOCALIP4);
-	printf("I: Remote IP: %d.%d.%d.%d\n", REMOTEIP1, REMOTEIP2, REMOTEIP3, REMOTEIP4);
+	printf("I: MAC      : %s\n", enet_ntoa(env_macaddr));
+	printf("I: Local IP : %s\n", inet_ntoa(env_myip));
+	printf("I: Remote IP: %s\n", inet_ntoa(env_serverip));
 
-	ip = IPTOINT(REMOTEIP1, REMOTEIP2, REMOTEIP3, REMOTEIP4);
+	microudp_start(env_macaddr, env_myip);
 
-	microudp_start(macadr, IPTOINT(LOCALIP1, LOCALIP2, LOCALIP3, LOCALIP4));
-
-	if(tftp_get_v(ip, "boot.bin", (void *)SDRAM_BASE) <= 0) {
+	if(tftp_get_v(env_serverip, "boot.bin", (void *)SDRAM_BASE) <= 0) {
 		printf("E: Network boot failed\n");
 		return;
 	}
 
 	cmdline_adr = SDRAM_BASE+0x1000000;
-	size = tftp_get_v(ip, "cmdline.txt", (void *)cmdline_adr);
+	size = tftp_get_v(env_serverip, "cmdline.txt", (void *)cmdline_adr);
 	if(size <= 0) {
 		printf("I: No command line parameters found\n");
 		cmdline_adr = 0;
@@ -260,7 +249,7 @@ void netboot(void)
 		*((char *)(cmdline_adr+size)) = 0x00;
 
 	initrdstart_adr = SDRAM_BASE+0x1002000;
-	size = tftp_get_v(ip, "initrd.bin", (void *)initrdstart_adr);
+	size = tftp_get_v(env_serverip, "initrd.bin", (void *)initrdstart_adr);
 	if(size <= 0) {
 		printf("I: No initial ramdisk found\n");
 		initrdstart_adr = 0;

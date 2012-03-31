@@ -25,6 +25,7 @@
 #include <system.h>
 #include <board.h>
 #include <irq.h>
+#include <net.h>
 #include <version.h>
 #include <net/mdio.h>
 #include <hw/fmlbrg.h>
@@ -622,6 +623,7 @@ int main(int i, char **c)
 	CSR_GPIO_OUT = GPIO_LED1;
 	rescue = !((unsigned int)main > FLASH_OFFSET_REGULAR_BIOS);
 
+	env_init();
 	irq_setmask(0);
 	irq_enable(1);
 	uart_init();
