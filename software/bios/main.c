@@ -28,6 +28,8 @@
 #include <net.h>
 #include <version.h>
 #include <net/mdio.h>
+#include <net/microudp.h>
+#include <net/tftp.h>
 #include <hw/fmlbrg.h>
 #include <hw/sysctl.h>
 #include <hw/gpio.h>
@@ -349,6 +351,33 @@ static void load(char *filename, char *addr, char *dev)
 	fatfs_done();
 }
 
+static void tftp(char *filename, char *addr)
+{
+	int size;
+	char *c;
+	char *addr2;
+
+	if((*filename == 0) || (*addr == 0)) {
+		printf("tftp <filename> <address>\n");
+		return;
+	}
+	
+
+	addr2 = (char *)strtoul(addr, &c, 0);
+	if(*c != 0) {
+		printf("incorrect address\n");
+		return;
+	};
+
+	microudp_start(env_macaddr, env_myip);
+	size = tftp_get(env_serverip, filename, addr2);
+	if(size <= 0) {
+		printf("TFTP transfer failed\n");
+	} else {
+		printf("Transferred %d bytes\n", size);
+	};
+}
+
 static void mdior(char *reg)
 {
 	char *c;
@@ -457,6 +486,7 @@ static void help(void)
 	puts("wcsr       - write processor CSR");
 	puts("ls         - list files on the filesystem");
 	puts("load       - load a file from the filesystem");
+	puts("tftp       - load a file via TFTP");
 	puts("netboot    - boot via TFTP");
 	puts("serialboot - boot via SFL");
 	puts("fsboot     - boot from the filesystem");
@@ -501,6 +531,8 @@ static void do_command(char *c)
 
 	else if(strcmp(token, "ls") == 0) ls(get_token(&c));
 	else if(strcmp(token, "load") == 0) load(get_token(&c), get_token(&c), get_token(&c));
+
+	else if(strcmp(token, "tftp") == 0) tftp(get_token(&c), get_token(&c));
 
 	else if(strcmp(token, "netboot") == 0) netboot();
 	else if(strcmp(token, "serialboot") == 0) serialboot();
