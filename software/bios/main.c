@@ -41,6 +41,7 @@
 #include <hal/ukb.h>
 
 #include "boot.h"
+#include "env.h"
 #include "splash.h"
 
 enum {
@@ -390,6 +391,55 @@ static void mdiow(char *reg, char *value)
 	mdio_write(brd_desc->ethernet_phyadr, reg2, value2);
 }
 
+static void setenv(char *var, char *val)
+{
+	int i;
+	char *c;
+	unsigned int ip_tok[4], ip2;
+	unsigned char mac[6];
+
+	if ((*var == 0) || (*val == 0)) {
+		printf("setenv <var> <value>\n");
+		return;
+	}
+
+	if (!strcmp(var, "myip") || !strcmp(var, "serverip")) {
+		for(i=0;i<4;i++) {
+			ip_tok[i] = strtoul(val, &c, 10);
+			if((i<3 && *c != '.') || (i==3 && *c != '\0')) {
+				printf("incorrect ip address\n");
+				return;
+			}
+			val = c+1;
+		}
+
+		ip2 = IPTOINT(ip_tok[0], ip_tok[1], ip_tok[2], ip_tok[3]);
+
+		if (*var == 'm') {
+			env_myip = ip2;
+		} else {
+			env_serverip = ip2;
+		}
+	} else if (!strcmp(var, "mac")) {
+		for(i=0;i<6;i++) {
+			mac[i] = strtoul(val, &c, 16) & 0xff;
+			if((i<5 && *c != ':') || (i==5 && *c != '\0')) {
+				printf("incorrect mac address\n");
+				return;
+			}
+			val = c+1;
+		}
+		memcpy(env_macaddr, mac, 6);
+	}
+}
+
+static void printenv()
+{
+	printf("mac=%s\n", enet_ntoa(env_macaddr));
+	printf("myip=%s\n", inet_ntoa(env_myip));
+	printf("serverip=%s\n", inet_ntoa(env_serverip));
+}
+
 /* Init + command line */
 
 static void help(void)
@@ -414,6 +464,8 @@ static void help(void)
 	puts("mdior      - read MDIO register");
 	puts("mdiow      - write MDIO register");
 	puts("version    - display version");
+	puts("printenv   - print environment variables");
+	puts("setenv     - set environment variable");
 	puts("reboot     - system reset");
 	puts("reconf     - reload FPGA configuration");
 }
@@ -461,6 +513,9 @@ static void do_command(char *c)
 	else if(strcmp(token, "version") == 0) puts(VERSION);
 	else if(strcmp(token, "reboot") == 0) reboot();
 	else if(strcmp(token, "reconf") == 0) reconf();
+
+	else if(strcmp(token, "printenv") == 0) printenv();
+	else if(strcmp(token, "setenv") == 0) setenv(get_token(&c), get_token(&c));
 
 	else if(strcmp(token, "help") == 0) help();
 
