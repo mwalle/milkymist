@@ -189,7 +189,6 @@ int microudp_arp_resolve(unsigned int ip)
 {
 	int i;
 	int tries;
-	int timeout;
 
 	if(cached_ip == ip) {
 		for(i=0;i<6;i++)
@@ -220,10 +219,16 @@ int microudp_arp_resolve(unsigned int ip)
 		send_packet();
 
 		/* Do we get a reply ? */
-		for(timeout=0;timeout<2000000;timeout++) {
+		CSR_TIMER0_COUNTER = 0;
+		CSR_TIMER0_COMPARE = CSR_FREQUENCY >> 1;
+		CSR_TIMER0_CONTROL = TIMER_ENABLE;
+		while(CSR_TIMER0_CONTROL & TIMER_ENABLE) {
 			microudp_service();
-			for(i=0;i<6;i++)
-				if(cached_mac[i]) return 1;
+			for(i=0;i<6;i++) {
+				if(cached_mac[i]) {
+					return 1;
+				}
+			}
 		}
 	}
 
