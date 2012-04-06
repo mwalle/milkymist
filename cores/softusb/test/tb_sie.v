@@ -93,11 +93,15 @@ initial begin
 	rxreset = 1'b0;
 	tx_data = 8'h80;
 	tx_valid = 1'b1;
-	#3000;
-	tx_data = 8'h2d;
-	#9000;
+	#5000;
+	tx_data = 8'ha5;
+	#5000;
+	tx_data = 8'h8a;
+	#5000;
+	tx_data = 8'h68;
+	#5000;
 	tx_valid = 1'b0;
-	#40000;
+	#10000;
 	$finish;
 end
 
