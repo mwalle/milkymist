@@ -27,7 +27,12 @@ module softusb_rx(
 	output reg [7:0] rx_data,
 	output reg rx_valid,
 	output reg rx_active,
+	output reg rx_sync,
+	output reg rx_eop,
 	output reg rx_error,
+	/* only valid during rx_eop pulse */
+	output rx_pid_error,
+	output rx_crc_error,
 
 	input low_speed
 );
@@ -165,6 +170,7 @@ reg [2:0] bitcount;
 reg [2:0] onecount;
 reg lastrx;
 reg startrx;
+reg rx_bit;
 always @(posedge usb_clk) begin
 	if(rxreset) begin
 		rx_active <= 1'b0;
@@ -173,8 +179,13 @@ always @(posedge usb_clk) begin
 	end else begin
 		rx_valid <= 1'b0;
 		rx_error <= 1'b0;
-		if(eop_detected)
+		rx_bit <= 1'b0;
+		rx_sync <= 1'b0;
+		rx_eop <= 1'b0;
+		if(eop_detected) begin
 			rx_active <= 1'b0;
+			rx_eop <= 1'b1;
+		end
 		else if(dpll_ce) begin
 			if(rx_active & ~se0) begin
 				if(onecount == 3'd6) begin
@@ -183,6 +194,7 @@ always @(posedge usb_clk) begin
 					if((lastrx & rx_corrected)|(~lastrx & ~rx_corrected)) begin
 						/* no transition? bitstuff error */
 						rx_active <= 1'b0;
+						rx_eop <= 1'b1;
 						rx_error <= 1'b1;
 					end
 					lastrx <= ~lastrx;
@@ -194,6 +206,7 @@ always @(posedge usb_clk) begin
 						else
 							onecount <= 3'd0;
 						lastrx <= 1'b1;
+						rx_bit <= 1'b1;
 					end else begin
 						rx_data <= {~lastrx, rx_data[7:1]};
 						if(~lastrx)
@@ -201,12 +214,14 @@ always @(posedge usb_clk) begin
 						else
 							onecount <= 3'd0;
 						lastrx <= 1'b0;
+						rx_bit <= 1'b1;
 					end
 					rx_valid <= bitcount == 3'd7;
 					bitcount <= bitcount + 3'd1;
 				end
 			end else if(startrx) begin
 				rx_active <= 1'b1;
+				rx_sync <= 1'b1;
 				bitcount <= 3'd0;
 				onecount <= 3'd1;
 				lastrx <= 1'b0;
@@ -214,6 +229,68 @@ always @(posedge usb_clk) begin
 		end
 	end
 end
+
+/* PID extracting & checking */
+
+parameter PKT_NONE    = 2'd0;
+parameter PKT_PID     = 2'd1;
+parameter PKT_PAYLOAD = 2'd2;
+
+reg [1:0] pkt_state;
+reg [1:0] pkt_next_state;
+
+always @(posedge usb_clk) begin
+	if(rxreset|eop_detected|fs_timeout)
+		pkt_state <= PKT_NONE;
+	else
+		pkt_state <= pkt_next_state;
+end
+
+always @(*) begin
+	pkt_next_state = pkt_state;
+
+	case(pkt_state)
+		PKT_NONE: if(rx_sync)
+			pkt_next_state = PKT_PID;
+		PKT_PID: if(rx_valid)
+			pkt_next_state = PKT_PAYLOAD;
+	endcase
+end
+
+reg [7:0] pid;
+always @(posedge usb_clk) begin
+	if(rxreset|startrx)
+		pid <= 8'h00;
+	else if(rx_valid & (pkt_state == PKT_PID))
+		pid <= rx_data;
+end
+
+assign rx_pid_error = pid[3:0] != ~pid[7:4];
+
+/* Serial CRC checking */
+
+wire crc_ce = (pkt_state == PKT_PAYLOAD) & rx_bit;
+wire crc_reset = rxreset | rx_sync;
+
+wire crc5_valid;
+wire crc16_valid;
+softusb_crc crc(
+	.usb_clk(usb_clk),
+
+	.crc_reset(crc_reset),
+	.crc_ce(crc_ce),
+	.data(rx_data[7]),
+
+	.crc5(),
+	.crc16(),
+
+	.crc5_valid(crc5_valid),
+	.crc16_valid(crc16_valid)
+);
+
+wire token_packet = pid[1:0] == 2'b01;
+wire data_packet = pid[1:0] == 2'b11;
+assign rx_crc_error = (~crc5_valid & token_packet) | (~crc16_valid & data_packet);
 
 /* Find sync pattern */
 

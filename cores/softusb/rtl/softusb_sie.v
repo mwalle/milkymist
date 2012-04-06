@@ -54,8 +54,14 @@ reg [1:0] generate_reset;
 wire [7:0] rx_data;
 wire rx_valid;
 wire rx_active;
+wire rx_sync;
+wire rx_eop;
 wire rx_error;
-reg rx_error_pending;
+wire rx_pid_error;
+wire rx_crc_error;
+reg [2:0] rx_error_pending;
+reg rx_sync_pending;
+reg rx_eop_pending;
 wire tx_busy;
 
 reg [7:0] data_in;
@@ -71,7 +77,7 @@ always @(posedge usb_clk) begin
 		tx_valid <= 1'b0;
 		tx_pending <= 1'b0;
 		generate_reset <= 2'd0;
-		rx_error_pending <= 1'b0;
+		rx_error_pending <= 3'b0;
 		rx_pending <= 1'b0;
 		tx_low_speed <= 1'b0;
 		low_speed <= 2'b00;
@@ -99,14 +105,26 @@ always @(posedge usb_clk) begin
 			6'h0a: io_do <= { rx_pending, rx_active };
 			6'h0b: io_do <= rx_active;
 			6'h0c: begin
-				io_do <= rx_error_pending;
+				io_do <= rx_error_pending[0];
 				if(io_re)
-					rx_error_pending <= 1'b0;
+					rx_error_pending <= 3'b0;
 			end
 			
 			6'h0d: io_do <= tx_low_speed;
 			6'h0e: io_do <= low_speed;
 			6'h0f: io_do <= 8'hxx;
+
+			/* below are the registers for new rx handling */
+			6'h10: begin
+				io_do <= rx_sync_pending;
+				if(io_re)
+					rx_sync_pending <= 1'b0;
+			end
+			6'h11: begin
+				io_do <= {rx_eop_pending, rx_pending};
+				if(io_re)
+					rx_eop_pending <= 1'b0;
+			end
 		endcase
 		if(io_we) begin
 			$display("USB SIE W: a=%x dat=%x", io_a, io_di);
@@ -131,8 +149,13 @@ always @(posedge usb_clk) begin
 			data_in <= rx_data;
 			rx_pending <= 1'b1;
 		end
-		if(rx_error)
-			rx_error_pending <= 1'b1;
+		if(rx_sync)
+			rx_sync_pending <= 1'b1;
+
+		if(rx_eop) begin
+			rx_eop_pending <= 1'b1;
+			rx_error_pending <= {rx_crc_error, rx_pid_error, rx_error};
+		end
 
 		if(io_re) // must be at the end because of the delay!
 			#1 $display("USB SIE R: a=%x dat=%x", io_a, io_do);
@@ -171,7 +194,11 @@ softusb_phy phy(
 	.rx_data(rx_data),
 	.rx_valid(rx_valid),
 	.rx_active(rx_active),
+	.rx_sync(rx_sync),
+	.rx_eop(rx_eop),
 	.rx_error(rx_error),
+	.rx_pid_error(rx_pid_error),
+	.rx_crc_error(rx_crc_error),
 
 	.tx_low_speed(tx_low_speed),
 	.low_speed(low_speed),
