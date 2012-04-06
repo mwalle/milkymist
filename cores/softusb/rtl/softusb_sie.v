@@ -62,6 +62,7 @@ wire rx_crc_error;
 reg [2:0] rx_error_pending;
 reg rx_sync_pending;
 reg rx_eop_pending;
+reg rx_overflow_pending;
 wire tx_busy;
 
 reg [7:0] data_in;
@@ -78,6 +79,7 @@ always @(posedge usb_clk) begin
 		tx_pending <= 1'b0;
 		generate_reset <= 2'd0;
 		rx_error_pending <= 3'b0;
+		rx_overflow_pending <= 1'b0;
 		rx_pending <= 1'b0;
 		tx_low_speed <= 1'b0;
 		low_speed <= 2'b00;
@@ -125,6 +127,13 @@ always @(posedge usb_clk) begin
 				if(io_re)
 					rx_eop_pending <= 1'b0;
 			end
+			6'h12: begin
+				io_do <= { rx_error_pending, rx_overflow_pending };
+				if(io_re) begin
+					rx_error_pending <= 3'b0;
+					rx_overflow_pending <= 1'b0;
+				end
+			end
 		endcase
 		if(io_we) begin
 			$display("USB SIE W: a=%x dat=%x", io_a, io_di);
@@ -146,6 +155,8 @@ always @(posedge usb_clk) begin
 		if(tx_ready)
 			tx_pending <= 1'b0;
 		if(rx_valid) begin
+			if (rx_pending)
+				rx_overflow_pending <= 1'b1;
 			data_in <= rx_data;
 			rx_pending <= 1'b1;
 		end
