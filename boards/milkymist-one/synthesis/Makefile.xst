@@ -1,6 +1,8 @@
 BOARD_DIR=../rtl
 CORES_DIR=../../../cores
 
+FILTER=-filter ../filter.filter
+
 include common.mak
 
 include ../sources.mak
@@ -16,10 +18,10 @@ $(BUILDDIR)/system.prj: $(SRC)
 	done
 
 build/system.ngc: build/system.prj
-	cd build && xst -ifn ../system.xst
+	cd build && xst $(FILTER) -ifn ../system.xst
 
 build-rescue/system.ngc: build-rescue/system.prj
-	cd build-rescue && xst -ifn ../system-rescue.xst
+	cd build-rescue && xst $(FILTER) -ifn ../system-rescue.xst
 
 $(BUILDDIR)/system.ngd: $(BUILDDIR)/system.ngc $(BUILDDIR)/system.ucf
-	cd $(BUILDDIR) && ngdbuild -uc system.ucf system.ngc
+	cd $(BUILDDIR) && ngdbuild $(FILTER) -uc system.ucf system.ngc

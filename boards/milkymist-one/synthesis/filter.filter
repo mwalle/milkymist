@@ -1,0 +1,3 @@
+<filters xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation='filter.xsd'>
+<filter task="xst" file="HDLCompiler" num="693" type="warning"></filter>
+</filters>
