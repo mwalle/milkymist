@@ -35,6 +35,7 @@
 #include <hw/gpio.h>
 #include <hw/flash.h>
 #include <hw/minimac.h>
+#include <hw/softusb.h>
 
 #include <hal/vga.h>
 #include <hal/tmu.h>
@@ -469,6 +470,55 @@ static void printenv(void)
 	printf("serverip=%s\n", inet_ntoa(env_serverip));
 }
 
+static void usb(char *cmd, char *val1, char *val2)
+{
+	if(*cmd == 0) {
+		printf("usb load [addr len]\n");
+		printf("usb debug on|off\n");
+		printf("usb reset\n");
+		printf("usb run\n");
+		printf("usb pc\n");
+		return;
+	}
+
+	if(!strcmp(cmd, "load")) {
+		if(*val1 == 0) {
+			usb_load_builtin_firmware();
+		} else {
+			unsigned char *addr;
+			unsigned int len;
+			char *c;
+			addr = (unsigned char*)strtoul(val1, &c, 0);
+			if(*c != 0) {
+				printf("incorrect address\n");
+				return;
+			}
+			len = strtoul(val2, &c, 0);
+			if(*c != 0) {
+				printf("incorrect length\n");
+				return;
+			}
+			usb_load_firmware(addr, len);
+		}
+	} else if(!strcmp(cmd, "debug")) {
+		if(*val1 == 0) {
+			printf("usb debug on|off\n");
+			return;
+		}
+		if (!strcmp(val1, "on")) {
+			usb_debug_enable(1);
+		} else {
+			usb_debug_enable(0);
+		}
+	} else if(!strcmp(cmd, "halt")) {
+		usb_assert_reset(1);
+	} else if(!strcmp(cmd, "reset")) {
+		usb_reset();
+	} else if(!strcmp(cmd, "pc")) {
+		printf("Navre PC @0x%04x\n", CSR_SOFTUSB_CONTROL);
+	}
+}
+
 /* Init + command line */
 
 static void help(void)
@@ -487,6 +537,7 @@ static void help(void)
 	puts("ls         - list files on the filesystem");
 	puts("load       - load a file from the filesystem");
 	puts("tftp       - load a file via TFTP");
+	puts("usb        - usb control");
 	puts("netboot    - boot via TFTP");
 	puts("serialboot - boot via SFL");
 	puts("fsboot     - boot from the filesystem");
@@ -533,6 +584,8 @@ static void do_command(char *c)
 	else if(strcmp(token, "load") == 0) load(get_token(&c), get_token(&c), get_token(&c));
 
 	else if(strcmp(token, "tftp") == 0) tftp(get_token(&c), get_token(&c));
+
+	else if(strcmp(token, "usb") == 0) usb(get_token(&c), get_token(&c), get_token(&c));
 
 	else if(strcmp(token, "netboot") == 0) netboot();
 	else if(strcmp(token, "serialboot") == 0) serialboot();

@@ -21,6 +21,11 @@
 typedef void (*mouse_event_cb)(unsigned char buttons, char dx, char dy, unsigned char wheel);
 typedef void (*keyboard_event_cb)(unsigned char modifiers, unsigned char key);
 
+void usb_reset(void);
+void usb_clear_dmem(void);
+void usb_load_builtin_firmware(void);
+void usb_load_firmware(const unsigned char *buf, int len);
+void usb_assert_reset(int en);
 void usb_init(void);
 void usb_debug_enable(int en);
 void usb_set_mouse_cb(mouse_event_cb cb);

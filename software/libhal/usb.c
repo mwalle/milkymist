@@ -42,12 +42,62 @@ unsigned char previous_keys[5];
 static keyboard_event_cb keyboard_cb;
 static int keyboard_consume;
 
-void usb_init(void)
+void usb_assert_reset(int en)
 {
-	int nwords;
+	if (en)
+		CSR_SOFTUSB_CONTROL = SOFTUSB_CONTROL_RESET;
+	else
+		CSR_SOFTUSB_CONTROL = 0;
+}
+
+void usb_load_firmware(const unsigned char *buf, int len)
+{
+	int i;
+	unsigned int *usb_pmem = (unsigned int *)SOFTUSB_PMEM_BASE;
+
+	for(i=0;i<SOFTUSB_PMEM_SIZE/2;i++)
+		usb_pmem[i] = 0;
+	for(i=0;i<(len+1)/2;i++)
+		usb_pmem[i] = ((unsigned int)(buf[2*i]))
+			|((unsigned int)(buf[2*i+1]) << 8);
+}
+
+void usb_load_builtin_firmware(void)
+{
+	usb_load_firmware(input_firmware, sizeof(input_firmware));
+}
+
+void usb_clear_dmem(void)
+{
 	int i;
 	unsigned int *usb_dmem = (unsigned int *)SOFTUSB_DMEM_BASE;
-	unsigned int *usb_pmem = (unsigned int *)SOFTUSB_PMEM_BASE;
+
+	for(i=0;i<SOFTUSB_DMEM_SIZE/4;i++)
+		usb_dmem[i] = 0;
+}
+
+/* reset internal driver state */
+static void __usb_reset(void)
+{
+	debug_enable = 1;
+	debug_len = 0;
+	debug_consume = 0;
+	mouse_consume = 0;
+	mouse_cb = NULL;
+	keyboard_consume = 0;
+	keyboard_cb = NULL;
+}
+
+void usb_reset(void)
+{
+	usb_assert_reset(1);
+	usb_clear_dmem();
+	__usb_reset();
+	usb_assert_reset(0);
+}
+
+void usb_init(void)
+{
 	unsigned int mask;
 
 	if(!(CSR_CAPABILITIES & CAP_USB)) {
@@ -56,25 +106,13 @@ void usb_init(void)
 	}
 
 	printf("USB: loading Navre firmware\n");
-	CSR_SOFTUSB_CONTROL = SOFTUSB_CONTROL_RESET;
-	for(i=0;i<SOFTUSB_DMEM_SIZE/4;i++)
-		usb_dmem[i] = 0;
-	for(i=0;i<SOFTUSB_PMEM_SIZE/2;i++)
-		usb_pmem[i] = 0;
-	nwords = (sizeof(input_firmware)+1)/2;
-	for(i=0;i<nwords;i++)
-		usb_pmem[i] = ((unsigned int)(input_firmware[2*i]))
-			|((unsigned int)(input_firmware[2*i+1]) << 8);
+	usb_assert_reset(1);
+	usb_clear_dmem();
+	usb_load_builtin_firmware();
 	printf("USB: starting host controller\n");
-	CSR_SOFTUSB_CONTROL = 0;
+	usb_assert_reset(0);
 
-	debug_enable = 1;
-	debug_len = 0;
-	debug_consume = 0;
-	mouse_consume = 0;
-	mouse_cb = NULL;
-	keyboard_consume = 0;
-	keyboard_cb = NULL;
+	__usb_reset();
 
 	mask = irq_getmask();
 	mask |= IRQ_USB;
