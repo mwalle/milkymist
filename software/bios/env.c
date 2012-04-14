@@ -17,7 +17,7 @@ unsigned char env_macaddr[6];
 unsigned int env_myip;
 unsigned int env_serverip;
 
-void env_init()
+void env_init(void)
 {
 	memcpy(env_macaddr, (void*)FLASH_OFFSET_MAC_ADDRESS, 6);
 	env_myip = IPTOINT(LOCALIP1, LOCALIP2, LOCALIP3, LOCALIP4);

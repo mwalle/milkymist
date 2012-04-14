@@ -462,7 +462,7 @@ static void setenv(char *var, char *val)
 	}
 }
 
-static void printenv()
+static void printenv(void)
 {
 	printf("mac=%s\n", enet_ntoa(env_macaddr));
 	printf("myip=%s\n", inet_ntoa(env_myip));
