@@ -1,0 +1,9 @@
+0 NOP
+1 INC
+2 KL
+3 KS
+4 DMEML
+6 DMEMH
+7 DEC
+8 Z
+9 EX

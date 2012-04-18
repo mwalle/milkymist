@@ -102,8 +102,13 @@ softusb_navre #(
 	.dbg_pc()
 );
 
+wire [15:0] PC = {dut.PC, 1'b0};
+
 initial begin
 	$display("Test: Fibonacci (assembler)");
+	$dumpfile("softusb_navre.vcd");
+	$dumpvars(0, dut);
+	$dumpvars(0, PC);
 	$readmemh("fib.rom", pmem);
 	sys_rst = 1'b1;
 	#15;
