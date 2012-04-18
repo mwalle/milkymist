@@ -66,6 +66,8 @@ wire io_we;
 wire [5:0] io_a;
 wire [7:0] io_dw;
 wire [7:0] io_dr_timer, io_dr_sie;
+wire [1:0] timer_irq;
+wire [1:0] timer_irq_ack;
 
 softusb_timer timer(
 	.usb_clk(usb_clk),
@@ -73,7 +75,10 @@ softusb_timer timer(
 
 	.io_we(io_we),
 	.io_a(io_a),
-	.io_do(io_dr_timer)
+	.io_di(io_dw),
+	.io_do(io_dr_timer),
+	.irq(timer_irq),
+	.irq_ack(timer_irq_ack)
 );
 
 wire [pmem_width-1:0] dbg_pc;
@@ -185,7 +190,8 @@ softusb_navre #(
 	.io_do(io_dw),
 	.io_di(io_dr_sie|io_dr_timer),
 
-	.irq(8'b0),
+	.irq({6'b0, timer_irq}),
+	.irq_ack(timer_irq_ack),
 
 	.dbg_pc(dbg_pc)
 );
