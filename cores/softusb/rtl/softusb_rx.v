@@ -65,10 +65,9 @@ always @(posedge usb_clk)
 	eop_clkdiv_counter <= eop_clkdiv_counter + 3'd1;
 
 
-reg eop_detected;
-
+reg eop_detected_state;
 always @(*) begin
-	eop_detected = 1'b0;
+	eop_detected_state = 1'b0;
 	eop_next_state = eop_state;
 
 	case(eop_state)
@@ -107,7 +106,7 @@ always @(*) begin
 				eop_next_state = 3'd5;
 			else begin
 				if(rx_corrected) begin
-					eop_detected = 1'b1;
+					eop_detected_state = 1'b1;
 					eop_next_state = 3'd0;
 				end else
 					eop_next_state = 3'd6;
@@ -115,11 +114,13 @@ always @(*) begin
 		end
 		3'd6: begin
 			if(rx_corrected)
-				eop_detected = 1'b1;
+				eop_detected_state = 1'b1;
 			eop_next_state = 3'd0;
 		end
 	endcase
 end
+
+wire eop_detected = eop_state_ce & eop_detected_state;
 
 /* DPLL */
 reg [2:0] div8_counter;
