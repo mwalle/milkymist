@@ -137,7 +137,6 @@ wire switch_to_user_mode;
 reg [`LM32_WORD_RNG] dtlb_update_vaddr_csr_reg = `LM32_WORD_WIDTH'd0;
 reg [`LM32_WORD_RNG] dtlb_update_paddr_csr_reg = `LM32_WORD_WIDTH'd0;
 //reg [1:0] dtlb_state;
-reg [`LM32_WORD_RNG] dtlb_ctrl_csr_reg = `LM32_WORD_WIDTH'd0;
 reg dtlb_updating;
 reg [addr_dtlb_index_width-1:0] dtlb_update_set;
 reg dtlb_flushing;
@@ -222,7 +221,6 @@ always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
 	if (rst_i == `TRUE)
 	begin
-		dtlb_ctrl_csr_reg <= `LM32_WORD_WIDTH'd0;
 		dtlb_update_vaddr_csr_reg <= `LM32_WORD_WIDTH'd0;
 		dtlb_update_paddr_csr_reg <= `LM32_WORD_WIDTH'd0;
 	end
@@ -231,12 +229,10 @@ begin
 		if (csr_write_enable)
 		begin
 			case (csr)
-			`LM32_CSR_TLB_CTRL:	if (csr_write_data[0]) dtlb_ctrl_csr_reg[31:1] <= csr_write_data[31:1];
 			`LM32_CSR_TLB_VADDRESS: if (csr_write_data[0]) dtlb_update_vaddr_csr_reg[31:1] <= csr_write_data[31:1];
 			`LM32_CSR_TLB_PADDRESS: if (csr_write_data[0]) dtlb_update_paddr_csr_reg[31:1] <= csr_write_data[31:1];
 			endcase
 		end
-		dtlb_ctrl_csr_reg[0] <= 0;
 		dtlb_update_vaddr_csr_reg[0] <= 0;
 		dtlb_update_paddr_csr_reg[0] <= 0;
 	end
