@@ -2919,8 +2919,8 @@ end
 initial
 begin
 `ifdef LM32_EBR_REGISTER_FILE
-    reg_0.ram[0] = {`LM32_WORD_WIDTH{1'b0}};
-    reg_1.ram[0] = {`LM32_WORD_WIDTH{1'b0}};
+    reg_0.mem[0] = {`LM32_WORD_WIDTH{1'b0}};
+    reg_1.mem[0] = {`LM32_WORD_WIDTH{1'b0}};
 `else
     registers[0] = {`LM32_WORD_WIDTH{1'b0}};
 `endif

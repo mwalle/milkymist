@@ -245,6 +245,29 @@
 `define LM32_CSR_WP3                    `LM32_CSR_WIDTH'h1b
 `endif
 
+`ifdef CFG_MMU_ENABLED
+`define LM32_CSR_PSW                    `LM32_CSR_WIDTH'hb
+`define LM32_CSR_TLB_CTRL               `LM32_CSR_WIDTH'h1c
+`define LM32_CSR_TLB_VADDRESS           `LM32_CSR_WIDTH'h1d
+`define LM32_CSR_TLB_PADDRESS           `LM32_CSR_WIDTH'h1e
+`define LM32_CSR_TLB_DBG                `LM32_CSR_WIDTH'h1f
+`endif
+
+`ifdef CFG_MMU_ENABLED
+`define LM32_CSR_PSW_IE                 `LM32_WORD_WIDTH'h0
+`define LM32_CSR_PSW_EIE                `LM32_WORD_WIDTH'h1
+`define LM32_CSR_PSW_BIE                `LM32_WORD_WIDTH'h2
+`define LM32_CSR_PSW_ITLBE              `LM32_WORD_WIDTH'h3
+`define LM32_CSR_PSW_EITLBE             `LM32_WORD_WIDTH'h4
+`define LM32_CSR_PSW_BITLBE             `LM32_WORD_WIDTH'h5
+`define LM32_CSR_PSW_DTLBE              `LM32_WORD_WIDTH'h6
+`define LM32_CSR_PSW_EDTLBE             `LM32_WORD_WIDTH'h7
+`define LM32_CSR_PSW_BDTLBE             `LM32_WORD_WIDTH'h8
+`define LM32_CSR_PSW_USR                `LM32_WORD_WIDTH'h9
+`define LM32_CSR_PSW_EUSR               `LM32_WORD_WIDTH'ha
+`define LM32_CSR_PSW_BUSR               `LM32_WORD_WIDTH'hb
+`endif
+
 // Values for WPC CSR
 `define LM32_WPC_C_RNG                  1:0
 `define LM32_WPC_C_DISABLED             2'b00
@@ -253,16 +276,18 @@
 `define LM32_WPC_C_READ_WRITE           2'b11
 
 // Exception IDs
-`define LM32_EID_WIDTH                  3
+`define LM32_EID_WIDTH                  4
 `define LM32_EID_RNG                    (`LM32_EID_WIDTH-1):0
-`define LM32_EID_RESET                  3'h0
-`define LM32_EID_BREAKPOINT             3'd1
-`define LM32_EID_INST_BUS_ERROR         3'h2
-`define LM32_EID_WATCHPOINT             3'd3
-`define LM32_EID_DATA_BUS_ERROR         3'h4
-`define LM32_EID_DIVIDE_BY_ZERO         3'h5
-`define LM32_EID_INTERRUPT              3'h6
-`define LM32_EID_SCALL                  3'h7
+`define LM32_EID_RESET                  4'h0
+`define LM32_EID_BREAKPOINT             4'd1
+`define LM32_EID_INST_BUS_ERROR         4'h2
+`define LM32_EID_WATCHPOINT             4'd3
+`define LM32_EID_DATA_BUS_ERROR         4'h4
+`define LM32_EID_DIVIDE_BY_ZERO         4'h5
+`define LM32_EID_INTERRUPT              4'h6
+`define LM32_EID_SCALL                  4'h7
+`define LM32_EID_DTLB_MISS              4'h8
+`define LM32_EID_ITLB_MISS              4'h9
 
 // Pipeline result selection mux controls
 
