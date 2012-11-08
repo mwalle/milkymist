@@ -62,9 +62,6 @@
 
 `include "lm32_include.v"
 
-`define LM32_KERNEL_MODE		 1
-`define LM32_USER_MODE			 0
-
 /////////////////////////////////////////////////////
 // Module interface
 /////////////////////////////////////////////////////
@@ -311,7 +308,6 @@ reg wb_load_complete;                                   // Indicates when a Wish
 
 `ifdef CFG_MMU_ENABLED
 wire [`LM32_WORD_RNG] physical_load_store_address_m;
-wire kernel_mode;
 wire dtlb_enabled;
 wire [1:0] dtlb_state;
 `endif
@@ -430,7 +426,6 @@ lm32_dtlb dtlb (
     // ----- Outputs -----
     .physical_load_store_address_m (physical_load_store_address_m),
     .dtlb_miss_int          (dtlb_miss),
-    .kernel_mode            (kernel_mode),
     .dtlb_enabled           (dtlb_enabled),
     .dtlb_state             (dtlb_state),
     .csr_read_data          (csr_read_data)
@@ -796,9 +791,9 @@ begin
                 d_dat_o <= store_data_m;
                 d_adr_o <=
 `ifdef CFG_MMU_ENABLED
-			(kernel_mode == `LM32_USER_MODE) ? physical_load_store_address_m :
+                    (dtlb_enabled) ? physical_load_store_address_m :
 `endif
-			load_store_address_m;
+                    load_store_address_m;
                 d_cyc_o <= `TRUE;
                 d_sel_o <= byte_enable_m;
                 d_stb_o <= `TRUE;
@@ -814,15 +809,15 @@ begin
                 // Read requested address
 `ifdef CFG_MMU_ENABLED
 `ifdef CFG_VERBOSE_DISPLAY_ENABLED
-		$display("Sampling address to read 0x%08X\n", (kernel_mode == `LM32_KERNEL_MODE) ? load_store_address_m : physical_load_store_address_m);
+		$display("Sampling address to read 0x%08X\n", (dtlb_enabled) ? load_store_address_m : physical_load_store_address_m);
 `endif
 `endif
                 stall_wb_load <= `FALSE;
                 d_adr_o <=
 `ifdef CFG_MMU_ENABLED
-			(kernel_mode == `LM32_USER_MODE) ? physical_load_store_address_m :
+                    (dtlb_enabled) ? physical_load_store_address_m :
 `endif
-			load_store_address_m;
+                    load_store_address_m;
 
                 d_cyc_o <= `TRUE;
                 d_sel_o <= byte_enable_m;

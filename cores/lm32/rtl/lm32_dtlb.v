@@ -4,15 +4,10 @@
 
 `define LM32_DTLB_CTRL_FLUSH                5'h1
 `define LM32_DTLB_CTRL_UPDATE               5'h2
-`define LM32_TLB_CTRL_SWITCH_TO_KERNEL_MODE 5'h4
-`define LM32_TLB_CTRL_SWITCH_TO_USER_MODE   5'h8
 `define LM32_TLB_CTRL_INVALIDATE_ENTRY      5'h10
 
 `define LM32_TLB_STATE_CHECK     2'b01
 `define LM32_TLB_STATE_FLUSH     2'b10
-
-`define LM32_KERNEL_MODE         1
-`define LM32_USER_MODE           0
 
 /////////////////////////////////////////////////////
 // Module interface
@@ -38,7 +33,6 @@ module lm32_dtlb (
     // ----- Outputs -----
     physical_load_store_address_m,
     dtlb_miss_int,
-    kernel_mode,
 	dtlb_enabled,
 	dtlb_state,
     csr_read_data
@@ -109,8 +103,6 @@ input [`LM32_WORD_RNG] csr_psw;
 
 output [`LM32_WORD_RNG] physical_load_store_address_m;
 wire   [`LM32_WORD_RNG] physical_load_store_address_m;
-output kernel_mode;
-wire   kernel_mode;
 output [`LM32_WORD_RNG] csr_read_data;
 wire   [`LM32_WORD_RNG] csr_read_data;
 output dtlb_miss_int;
@@ -131,9 +123,6 @@ wire dtlb_write_port_enable;
 wire [vpfn_width + addr_dtlb_tag_width + 1 - 1:0] dtlb_write_data; // +1 is for valid_bit
 wire [vpfn_width + addr_dtlb_tag_width + 1 - 1:0] dtlb_read_data; // +1 is for valid_bit
 
-reg kernel_mode_reg = `LM32_KERNEL_MODE;
-wire switch_to_kernel_mode;
-wire switch_to_user_mode;
 reg [`LM32_WORD_RNG] dtlb_update_vaddr_csr_reg = `LM32_WORD_WIDTH'd0;
 reg [`LM32_WORD_RNG] dtlb_update_paddr_csr_reg = `LM32_WORD_WIDTH'd0;
 //reg [1:0] dtlb_state;
@@ -181,8 +170,6 @@ lm32_ram
 /////////////////////////////////////////////////////
 // Combinational logic
 /////////////////////////////////////////////////////
-
-assign kernel_mode = kernel_mode_reg;
 
 assign dtlb_enabled = csr_psw[`LM32_CSR_PSW_DTLBE];
 
@@ -281,8 +268,7 @@ begin
 				begin
 					dtlb_updating <= 1;
 				end
-				// FIXME : test for kernel mode is removed for testing purposes ONLY
-				else if (csr == `LM32_CSR_TLB_VADDRESS /*&& (kernel_mode_reg == `LM32_KERNEL_MODE)*/)
+				else if (csr == `LM32_CSR_TLB_VADDRESS)
 				begin
 					dtlb_updating <= 0;
 					case (csr_write_data[5:1])
@@ -318,19 +304,6 @@ begin
 		end
 
 		endcase
-	end
-end
-
-always @(posedge clk_i `CFG_RESET_SENSITIVITY)
-begin
-	if (rst_i == `TRUE)
-		kernel_mode_reg <= `LM32_KERNEL_MODE;
-	else
-	begin
-		if (exception_x || switch_to_kernel_mode)
-			kernel_mode_reg <= `LM32_KERNEL_MODE;
-		else if (eret_q_x || switch_to_user_mode)
-			kernel_mode_reg <= `LM32_USER_MODE;
 	end
 end
 
