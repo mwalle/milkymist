@@ -20,6 +20,7 @@ LM32_SRC=							\
 	$(CORES_DIR)/lm32/rtl/lm32_icache.v			\
 	$(CORES_DIR)/lm32/rtl/lm32_dcache.v			\
 	$(CORES_DIR)/lm32/rtl/lm32_itlb.v			\
+	$(CORES_DIR)/lm32/rtl/lm32_dtlb.v			\
 	$(CORES_DIR)/lm32/rtl/lm32_top.v			\
 	$(CORES_DIR)/lm32/rtl/lm32_debug.v			\
 	$(CORES_DIR)/lm32/rtl/lm32_jtag.v			\

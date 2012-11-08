@@ -202,11 +202,6 @@ input dflush;                                           // Flush the data cache
 input [`LM32_WORD_RNG] irom_data_m;                     // Data from Instruction-ROM
 `endif
 
-`ifdef CFG_MMU_ENABLED
-wire dtlb_miss;
-output dtlb_miss;
-`endif
-
 input [`LM32_WORD_RNG] d_dat_i;                         // Data Wishbone interface read data
 input d_ack_i;                                          // Data Wishbone interface acknowledgement
 input d_err_i;                                          // Data Wishbone interface error
@@ -228,8 +223,10 @@ wire   dcache_refilling;
 `endif
 
 `ifdef CFG_MMU_ENABLED
-output csr_read_data;
-wire [`LM32_WORD_RNG] csr_read_data;
+output [`LM32_WORD_RNG] csr_read_data;
+wire   [`LM32_WORD_RNG] csr_read_data;
+output dtlb_miss;
+wire   dtlb_miss;
 `endif
 
 `ifdef CFG_IROM_ENABLED
@@ -313,8 +310,10 @@ reg [`LM32_WORD_RNG] wb_data_m;                         // Data read from Wishbo
 reg wb_load_complete;                                   // Indicates when a Wishbone load is complete
 
 `ifdef CFG_MMU_ENABLED
-wire [`LM32_WORD_RNG] physical_address;
+wire [`LM32_WORD_RNG] physical_load_store_address_m;
 wire kernel_mode;
+wire dtlb_enabled;
+wire [1:0] dtlb_state;
 `endif
 
 /////////////////////////////////////////////////////
@@ -409,6 +408,35 @@ wire kernel_mode;
    assign dram_data_m = dram_bypass_en ? dram_bypass_data : dram_data_out;
 `endif
 
+`ifdef CFG_MMU_ENABLED
+// Data TLB
+lm32_dtlb dtlb (
+    // ----- Inputs -----
+    .clk_i                  (clk_i),
+    .rst_i                  (rst_i),
+    .stall_x                (stall_x),
+    .stall_m                (stall_m),
+    .address_x              (load_store_address_x),
+    .address_m              (load_store_address_m),
+    .load_q_m               (load_q_m & dcache_select_m),
+    .store_q_m              (store_q_m & dcache_select_m),
+    .csr                    (csr),
+    .csr_write_data         (csr_write_data),
+    .csr_write_enable       (csr_write_enable),
+    .exception_x            (exception_x),
+    .eret_q_x               (eret_q_x),
+    .exception_m            (exception_m),
+    .csr_psw                (csr_psw),
+    // ----- Outputs -----
+    .physical_load_store_address_m (physical_load_store_address_m),
+    .dtlb_miss_int          (dtlb_miss),
+    .kernel_mode            (kernel_mode),
+    .dtlb_enabled           (dtlb_enabled),
+    .dtlb_state             (dtlb_state),
+    .csr_read_data          (csr_read_data)
+    );
+`endif
+
 `ifdef CFG_DCACHE_ENABLED
 // Data cache
 lm32_dcache #(
@@ -434,13 +462,10 @@ lm32_dcache #(
     .refill_data            (wb_data_m),
     .dflush                 (dflush),
 `ifdef CFG_MMU_ENABLED
-    .csr		    (csr),
-    .csr_write_data	    (csr_write_data),
-    .csr_write_enable	    (csr_write_enable),
-    .exception_x	    (exception_x),
-    .eret_q_x		    (eret_q_x),
-    .exception_m	    (exception_m),
-    .csr_psw		    (csr_psw),
+    .dtlb_enabled           (dtlb_enabled),
+    .dtlb_state             (dtlb_state),
+    .physical_address_m     (physical_load_store_address_m),
+    .dtlb_miss              (dtlb_miss),
 `endif
     // ----- Outputs -----
     .stall_request          (dcache_stall_request),
@@ -448,12 +473,6 @@ lm32_dcache #(
     .refill_request         (dcache_refill_request),
     .refill_address         (dcache_refill_address),
     .refilling              (dcache_refilling),
-`ifdef CFG_MMU_ENABLED
-    .dtlb_miss_int	    (dtlb_miss),
-    .kernel_mode	    (kernel_mode),
-    .pa			    (physical_address),
-    .csr_read_data	    (csr_read_data),
-`endif
     .load_data              (dcache_data_m)
     );
 `endif
@@ -777,7 +796,7 @@ begin
                 d_dat_o <= store_data_m;
                 d_adr_o <=
 `ifdef CFG_MMU_ENABLED
-			(kernel_mode == `LM32_USER_MODE) ? physical_address :
+			(kernel_mode == `LM32_USER_MODE) ? physical_load_store_address_m :
 `endif
 			load_store_address_m;
                 d_cyc_o <= `TRUE;
@@ -795,13 +814,13 @@ begin
                 // Read requested address
 `ifdef CFG_MMU_ENABLED
 `ifdef CFG_VERBOSE_DISPLAY_ENABLED
-		$display("Sampling address to read 0x%08X\n", (kernel_mode == `LM32_KERNEL_MODE) ? load_store_address_m : physical_address);
+		$display("Sampling address to read 0x%08X\n", (kernel_mode == `LM32_KERNEL_MODE) ? load_store_address_m : physical_load_store_address_m);
 `endif
 `endif
                 stall_wb_load <= `FALSE;
                 d_adr_o <=
 `ifdef CFG_MMU_ENABLED
-			(kernel_mode == `LM32_USER_MODE) ? physical_address :
+			(kernel_mode == `LM32_USER_MODE) ? physical_load_store_address_m :
 `endif
 			load_store_address_m;
 
