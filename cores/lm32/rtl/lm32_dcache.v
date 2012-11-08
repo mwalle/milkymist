@@ -442,10 +442,10 @@ generate
     for (i = 0; i < associativity; i = i + 1)
     begin : match
 
-assign way_match[i] = 
+assign way_match[i] =
 `ifdef CFG_MMU_ENABLED
 			(dtlb_enabled == `TRUE) ?
-			({way_tag[i], way_valid[i]} == {dtlb_lookup, `TRUE}) : 
+			({way_tag[i], way_valid[i]} == {dtlb_lookup, `TRUE}) :
 `endif
 		      ({way_tag[i], way_valid[i]} == {address_m[`LM32_DC_ADDR_TAG_RNG], `TRUE});
     end
@@ -552,7 +552,7 @@ assign check = state[1];
 assign refill = state[2];
 
 assign miss = (~(|way_match)) && (load_q_m == `TRUE) && (stall_m == `FALSE) && (~dtlb_miss);
-assign stall_request = (check == `FALSE) || (dtlb_state == `LM32_TLB_STATE_FLUSH 
+assign stall_request = (check == `FALSE) || (dtlb_state == `LM32_TLB_STATE_FLUSH
 `ifdef CFG_MMU_ENABLED
 			&& (dtlb_enabled == `TRUE)
 `endif
@@ -622,7 +622,7 @@ begin
 `ifdef CFG_MMU_ENABLED
                 refill_address <= physical_address;
 `else
-		refill_address <= address_m;		
+		refill_address <= address_m;
 `endif
                 state <= `LM32_DC_STATE_REFILL;
             end
