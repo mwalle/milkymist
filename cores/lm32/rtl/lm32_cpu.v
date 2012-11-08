@@ -865,12 +865,12 @@ lm32_instruction_unit #(
     .dcache_refilling       (dcache_refilling),
 `endif
 `ifdef CFG_MMU_ENABLED
-    .csr		    (csr_x),
-    .csr_write_data	    (operand_1_x),
-    .csr_write_enable	    (csr_write_enable_q_x),
-    .eret_q_x		    (eret_q_x),
-    .csr_psw		    (lm32_csr_psw_reg),
-    .q_x		    (q_x),
+    .csr                    (csr_x),
+    .csr_write_data         (operand_1_x),
+    .csr_write_enable       (csr_write_enable_q_x),
+    .eret_q_x               (eret_q_x),
+    .csr_psw                (lm32_csr_psw_reg),
+    .q_x                    (q_x),
 `endif
 `ifdef CFG_IWB_ENABLED
     // From Wishbone
@@ -1049,11 +1049,11 @@ lm32_load_store_unit #(
     .irom_data_m            (irom_data_m),
 `endif
 `ifdef CFG_MMU_ENABLED
-    .csr		    (csr_x),
+    .csr                    (csr_x),
     .csr_write_data         (operand_1_x),
     .csr_write_enable       (csr_write_enable_q_x),
-    .eret_q_x		    (eret_q_x),
-    .csr_psw		    (lm32_csr_psw_reg),
+    .eret_q_x               (eret_q_x),
+    .csr_psw                (lm32_csr_psw_reg),
 `endif
     // From Wishbone
     .d_dat_i                (D_DAT_I),
