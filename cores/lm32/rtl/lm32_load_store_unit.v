@@ -125,6 +125,7 @@ module lm32_load_store_unit (
     load_data_w,
     stall_wb_load,
 `ifdef CFG_MMU_ENABLED
+    dtlb_stall_request,
     dtlb_miss,
     csr_read_data,
 `endif
@@ -220,6 +221,8 @@ wire   dcache_refilling;
 `endif
 
 `ifdef CFG_MMU_ENABLED
+output dtlb_stall_request;                              // Data TLB stall request
+wire   dtlb_stall_request;
 output [`LM32_WORD_RNG] csr_read_data;
 wire   [`LM32_WORD_RNG] csr_read_data;
 output dtlb_miss;
@@ -309,7 +312,6 @@ reg wb_load_complete;                                   // Indicates when a Wish
 `ifdef CFG_MMU_ENABLED
 wire [`LM32_WORD_RNG] physical_load_store_address_m;
 wire dtlb_enabled;
-wire [1:0] dtlb_state;
 `endif
 
 /////////////////////////////////////////////////////
@@ -425,9 +427,9 @@ lm32_dtlb dtlb (
     .csr_psw                (csr_psw),
     // ----- Outputs -----
     .physical_load_store_address_m (physical_load_store_address_m),
+    .stall_request          (dtlb_stall_request),
     .dtlb_miss_int          (dtlb_miss),
     .dtlb_enabled           (dtlb_enabled),
-    .dtlb_state             (dtlb_state),
     .csr_read_data          (csr_read_data)
     );
 `endif
@@ -458,7 +460,6 @@ lm32_dcache #(
     .dflush                 (dflush),
 `ifdef CFG_MMU_ENABLED
     .dtlb_enabled           (dtlb_enabled),
-    .dtlb_state             (dtlb_state),
     .physical_address_m     (physical_load_store_address_m),
     .dtlb_miss              (dtlb_miss),
 `endif

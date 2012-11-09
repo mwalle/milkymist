@@ -94,7 +94,6 @@ module lm32_dcache (
     store_byte_select,
 `ifdef CFG_MMU_ENABLED
     dtlb_enabled,
-    dtlb_state,
     physical_address_m,
     dtlb_miss,
 `endif
@@ -150,7 +149,6 @@ input [`LM32_BYTE_SELECT_RNG] store_byte_select;        // Which bytes in store 
 
 `ifdef CFG_MMU_ENABLED
 input dtlb_enabled;
-input [1:0] dtlb_state;
 input [`LM32_WORD_RNG] physical_address_m;              // M stage physical load/store address
 input dtlb_miss;
 `endif
@@ -420,11 +418,7 @@ assign check = state[1];
 assign refill = state[2];
 
 assign miss = (~(|way_match)) && (load_q_m == `TRUE) && (stall_m == `FALSE) && (~dtlb_miss);
-assign stall_request = (check == `FALSE) || (dtlb_state == `LM32_TLB_STATE_FLUSH
-`ifdef CFG_MMU_ENABLED
-			&& (dtlb_enabled == `TRUE)
-`endif
-			);
+assign stall_request = (check == `FALSE);
 
 /////////////////////////////////////////////////////
 // Sequential logic

@@ -800,6 +800,7 @@ reg ext_break_r;
 `endif
 
 `ifdef CFG_MMU_ENABLED
+wire dtlb_stall_request;                        // Stall pipeline because data TLB is busy
 wire dtlb_miss_exception;
 wire itlb_miss_exception;
 reg [`LM32_WORD_RNG] lm32_csr_psw_reg;
@@ -1077,6 +1078,7 @@ lm32_load_store_unit #(
     .load_data_w            (load_data_w),
     .stall_wb_load          (stall_wb_load),
 `ifdef CFG_MMU_ENABLED
+    .dtlb_stall_request     (dtlb_stall_request),
     .dtlb_miss		    (dtlb_miss_exception),
     .csr_read_data          (load_store_csr_read_data_x),
 `endif
@@ -1990,6 +1992,9 @@ assign stall_m =    (stall_wb_load == `TRUE)
 `endif
 `ifdef CFG_DCACHE_ENABLED
                  || (dcache_stall_request == `TRUE)     // Need to stall in case a taken branch is in M stage and data cache is only being flush, so wont be restarted
+`endif
+`ifdef CFG_MMU_ENABLED
+                 || (dtlb_stall_request == `TRUE)       // XXX describe me
 `endif
 `ifdef CFG_ICACHE_ENABLED
                  || (icache_stall_request == `TRUE)     // Pipeline needs to be stalled otherwise branches may be lost

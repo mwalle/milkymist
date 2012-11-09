@@ -32,9 +32,9 @@ module lm32_dtlb (
     csr_psw,
     // ----- Outputs -----
     physical_load_store_address_m,
+	stall_request,
     dtlb_miss_int,
 	dtlb_enabled,
-	dtlb_state,
     csr_read_data
     );
 
@@ -109,8 +109,8 @@ output dtlb_miss_int;
 wire   dtlb_miss_int;
 output dtlb_enabled;
 wire   dtlb_enabled;
-output [1:0] dtlb_state;
-reg    [1:0] dtlb_state;
+output stall_request;
+wire   stall_request;
 
 /////////////////////////////////////////////////////
 // Internal nets and registers
@@ -125,7 +125,7 @@ wire [vpfn_width + addr_dtlb_tag_width + 1 - 1:0] dtlb_read_data; // +1 is for v
 
 reg [`LM32_WORD_RNG] dtlb_update_vaddr_csr_reg = `LM32_WORD_WIDTH'd0;
 reg [`LM32_WORD_RNG] dtlb_update_paddr_csr_reg = `LM32_WORD_WIDTH'd0;
-//reg [1:0] dtlb_state;
+reg [1:0] dtlb_state;
 reg dtlb_updating;
 reg [addr_dtlb_index_width-1:0] dtlb_update_set;
 reg dtlb_flushing;
@@ -136,6 +136,7 @@ reg [`LM32_WORD_RNG] dtlb_miss_addr;
 wire dtlb_data_valid;
 wire [`LM32_DTLB_LOOKUP_RANGE] dtlb_lookup;
 
+assign stall_request = (dtlb_state == `LM32_TLB_STATE_FLUSH) && (dtlb_enabled == `TRUE);
 
 /////////////////////////////////////////////////////
 // Functions
