@@ -102,6 +102,7 @@ module lm32_load_store_unit (
     csr_write_enable,
     eret_q_x,
     csr_psw,
+	dtlb_enable,
 `endif
     // From Wishbone
     d_dat_i,
@@ -173,6 +174,7 @@ input exception_x;                                      // An exception occured 
 input eret_q_x;
 
 `ifdef CFG_MMU_ENABLED
+input dtlb_enable;
 input [`LM32_CSR_RNG] csr;				// CSR read/write index
 input [`LM32_WORD_RNG] csr_write_data;			// Data to write to specified CSR
 input csr_write_enable;					// CSR write enable
@@ -311,7 +313,6 @@ reg wb_load_complete;                                   // Indicates when a Wish
 
 `ifdef CFG_MMU_ENABLED
 wire [`LM32_WORD_RNG] physical_load_store_address_m;
-wire dtlb_enabled;
 `endif
 
 /////////////////////////////////////////////////////
@@ -412,6 +413,7 @@ lm32_dtlb dtlb (
     // ----- Inputs -----
     .clk_i                  (clk_i),
     .rst_i                  (rst_i),
+    .enable                 (dtlb_enable),
     .stall_x                (stall_x),
     .stall_m                (stall_m),
     .address_x              (load_store_address_x),
@@ -424,12 +426,10 @@ lm32_dtlb dtlb (
     .exception_x            (exception_x),
     .eret_q_x               (eret_q_x),
     .exception_m            (exception_m),
-    .csr_psw                (csr_psw),
     // ----- Outputs -----
     .physical_load_store_address_m (physical_load_store_address_m),
     .stall_request          (dtlb_stall_request),
     .dtlb_miss_int          (dtlb_miss),
-    .dtlb_enabled           (dtlb_enabled),
     .csr_read_data          (csr_read_data)
     );
 `endif
@@ -459,7 +459,7 @@ lm32_dcache #(
     .refill_data            (wb_data_m),
     .dflush                 (dflush),
 `ifdef CFG_MMU_ENABLED
-    .dtlb_enabled           (dtlb_enabled),
+    .dtlb_enable            (dtlb_enable),
     .physical_address_m     (physical_load_store_address_m),
     .dtlb_miss              (dtlb_miss),
 `endif
@@ -792,7 +792,7 @@ begin
                 d_dat_o <= store_data_m;
                 d_adr_o <=
 `ifdef CFG_MMU_ENABLED
-                    (dtlb_enabled) ? physical_load_store_address_m :
+                    (dtlb_enable) ? physical_load_store_address_m :
 `endif
                     load_store_address_m;
                 d_cyc_o <= `TRUE;
@@ -810,13 +810,13 @@ begin
                 // Read requested address
 `ifdef CFG_MMU_ENABLED
 `ifdef CFG_VERBOSE_DISPLAY_ENABLED
-		$display("Sampling address to read 0x%08X\n", (dtlb_enabled) ? load_store_address_m : physical_load_store_address_m);
+		$display("Sampling address to read 0x%08X\n", (dtlb_enable) ? load_store_address_m : physical_load_store_address_m);
 `endif
 `endif
                 stall_wb_load <= `FALSE;
                 d_adr_o <=
 `ifdef CFG_MMU_ENABLED
-                    (dtlb_enabled) ? physical_load_store_address_m :
+                    (dtlb_enable) ? physical_load_store_address_m :
 `endif
                     load_store_address_m;
 

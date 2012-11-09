@@ -93,7 +93,7 @@ module lm32_dcache (
     store_data,
     store_byte_select,
 `ifdef CFG_MMU_ENABLED
-    dtlb_enabled,
+    dtlb_enable,
     physical_address_m,
     dtlb_miss,
 `endif
@@ -148,7 +148,7 @@ input [`LM32_WORD_RNG] store_data;                      // Data to store
 input [`LM32_BYTE_SELECT_RNG] store_byte_select;        // Which bytes in store data should be modified
 
 `ifdef CFG_MMU_ENABLED
-input dtlb_enabled;
+input dtlb_enable;
 input [`LM32_WORD_RNG] physical_address_m;              // M stage physical load/store address
 input dtlb_miss;
 `endif

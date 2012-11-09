@@ -17,6 +17,7 @@ module lm32_dtlb (
     // ----- Inputs -------
     clk_i,
     rst_i,
+    enable,
     stall_x,
     stall_m,
     address_x,
@@ -29,12 +30,10 @@ module lm32_dtlb (
     exception_x,
     eret_q_x,
     exception_m,
-    csr_psw,
     // ----- Outputs -----
     physical_load_store_address_m,
 	stall_request,
     dtlb_miss_int,
-	dtlb_enabled,
     csr_read_data
     );
 
@@ -81,6 +80,8 @@ localparam addr_dtlb_tag_msb = addr_dtlb_tag_lsb + addr_dtlb_tag_width - 1;
 input clk_i;                                            // Clock
 input rst_i;                                            // Reset
 
+input enable;                                           // Data TLB enable
+
 input stall_x;                                          // Stall X stage
 input stall_m;                                          // Stall M stage
 
@@ -95,7 +96,6 @@ input csr_write_enable;					// CSR write enable
 input exception_x;					// An exception occured in the X stage
 input exception_m;
 input eret_q_x;
-input [`LM32_WORD_RNG] csr_psw;
 
 /////////////////////////////////////////////////////
 // Outputs
@@ -107,8 +107,6 @@ output [`LM32_WORD_RNG] csr_read_data;
 wire   [`LM32_WORD_RNG] csr_read_data;
 output dtlb_miss_int;
 wire   dtlb_miss_int;
-output dtlb_enabled;
-wire   dtlb_enabled;
 output stall_request;
 wire   stall_request;
 
@@ -136,7 +134,7 @@ reg [`LM32_WORD_RNG] dtlb_miss_addr;
 wire dtlb_data_valid;
 wire [`LM32_DTLB_LOOKUP_RANGE] dtlb_lookup;
 
-assign stall_request = (dtlb_state == `LM32_TLB_STATE_FLUSH) && (dtlb_enabled == `TRUE);
+assign stall_request = (dtlb_state == `LM32_TLB_STATE_FLUSH) && (enable == `TRUE);
 
 /////////////////////////////////////////////////////
 // Functions
@@ -172,8 +170,6 @@ lm32_ram
 // Combinational logic
 /////////////////////////////////////////////////////
 
-assign dtlb_enabled = csr_psw[`LM32_CSR_PSW_DTLBE];
-
 // Compute address to use to index into the DTLB data memory
 
 assign dtlb_data_read_address = address_x[`LM32_DTLB_IDX_RNG];
@@ -185,7 +181,7 @@ assign dtlb_data_write_address = dtlb_update_vaddr_csr_reg[`LM32_DTLB_IDX_RNG];
 assign dtlb_data_read_port_enable = (stall_x == `FALSE) || !stall_m;
 assign dtlb_write_port_enable = dtlb_updating || dtlb_flushing;
 
-assign physical_load_store_address_m = (dtlb_enabled == `FALSE)
+assign physical_load_store_address_m = (enable == `FALSE)
 			    ? address_m
 			    : {dtlb_lookup, address_m[`LM32_PAGE_OFFSET_RNG]};
 
@@ -197,7 +193,7 @@ assign dtlb_read_tag = dtlb_read_data[`LM32_DTLB_TAG_RANGE];
 assign dtlb_data_valid = dtlb_read_data[`LM32_DTLB_VALID_BIT];
 assign dtlb_lookup = dtlb_read_data[`LM32_DTLB_LOOKUP_RANGE];
 assign csr_read_data = dtlb_miss_addr;
-assign dtlb_miss = (dtlb_enabled == `TRUE) && (load_q_m || store_q_m) && ~(dtlb_data_valid);
+assign dtlb_miss = (enable == `TRUE) && (load_q_m || store_q_m) && ~(dtlb_data_valid);
 assign dtlb_miss_int = (dtlb_miss || dtlb_miss_q);
 
 /////////////////////////////////////////////////////

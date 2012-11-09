@@ -800,6 +800,8 @@ reg ext_break_r;
 `endif
 
 `ifdef CFG_MMU_ENABLED
+wire itlb_enable;                               // Instruction TLB enable
+wire dtlb_enable;                               // Data TLB enable
 wire dtlb_stall_request;                        // Stall pipeline because data TLB is busy
 wire dtlb_miss_exception;
 wire itlb_miss_exception;
@@ -1050,6 +1052,7 @@ lm32_load_store_unit #(
     .irom_data_m            (irom_data_m),
 `endif
 `ifdef CFG_MMU_ENABLED
+    .dtlb_enable            (dtlb_enable),
     .csr                    (csr_x),
     .csr_write_data         (operand_1_x),
     .csr_write_enable       (csr_write_enable_q_x),
@@ -2205,6 +2208,8 @@ begin
 end
 
 `ifdef CFG_MMU_ENABLED
+assign itlb_enable = lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE];
+assign dtlb_enable = lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE];
 
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
