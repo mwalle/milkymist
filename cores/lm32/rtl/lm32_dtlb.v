@@ -2,9 +2,10 @@
 
 `ifdef CFG_MMU_ENABLED
 
-`define LM32_DTLB_CTRL_FLUSH                5'h1
-`define LM32_DTLB_CTRL_UPDATE               5'h2
-`define LM32_TLB_CTRL_INVALIDATE_ENTRY      5'h10
+`define LM32_TLB_OP_RNG                     5:1
+`define LM32_TLB_OP_NOOP                    5'h0
+`define LM32_TLB_OP_FLUSH                   5'h1
+`define LM32_TLB_OP_INVALIDATE              5'h10
 
 `define LM32_DTLB_STATE_RNG                 1:0
 `define LM32_DTLB_STATE_CHECK               2'b01
@@ -70,7 +71,7 @@ localparam addr_tag_msb = addr_tag_lsb + addr_tag_width - 1;
  * LM32_DTLB_TAG_RANGE is the range to extract the TAG_VALUE */
 `define LM32_DTLB_TAG_RANGE     vpfn_width+addr_tag_width-1:vpfn_width
 
-/* The following define is the range containing the TAG inside a memory address like update_vaddr_csr_reg for instance. */
+/* The following define is the range containing the TAG inside a memory address like update_vaddr for instance. */
 `define LM32_DTLB_ADDR_TAG_RNG      addr_tag_msb:addr_tag_lsb
 `define LM32_DTLB_VALID_BIT     vpfn_width+addr_tag_width
 
@@ -122,8 +123,8 @@ wire write_port_enable;
 wire [vpfn_width + addr_tag_width + 1 - 1:0] write_data; // +1 is for valid_bit
 wire [vpfn_width + addr_tag_width + 1 - 1:0] read_data; // +1 is for valid_bit
 
-reg [`LM32_WORD_RNG] update_vaddr_csr_reg = `LM32_WORD_WIDTH'd0;
-reg [`LM32_WORD_RNG] update_paddr_csr_reg = `LM32_WORD_WIDTH'd0;
+reg [`LM32_WORD_RNG] update_vaddr;
+reg [`LM32_WORD_RNG] update_paddr;
 reg [`LM32_DTLB_STATE_RNG] state;                         // Current state of FSM
 reg update;
 reg invalidate;
@@ -135,8 +136,7 @@ wire data_valid;
 wire [`LM32_DTLB_LOOKUP_RANGE] lookup;
 wire checking;
 wire flushing;
-
-assign stall_request = flushing;
+wire csr_dtlb_selected;
 
 /////////////////////////////////////////////////////
 // Functions
@@ -180,7 +180,7 @@ assign tag_read_address = address_x[`LM32_DTLB_IDX_RNG];
 // tlb_update_address will receive data from a CSR register
 assign data_write_address = (flushing == `TRUE)
                             ? flush_set
-                            : update_vaddr_csr_reg[`LM32_DTLB_IDX_RNG];
+                            : update_vaddr[`LM32_DTLB_IDX_RNG];
 
 assign data_read_port_enable = (stall_x == `FALSE) || !stall_m;
 assign write_port_enable = update || invalidate;
@@ -191,7 +191,7 @@ assign physical_load_store_address_m = (enable == `FALSE)
 
 assign write_data = (invalidate == `TRUE)
              ? {`FALSE, {addr_tag_width{1'b0}}, {vpfn_width{1'b0}}}
-             : {`TRUE, {update_vaddr_csr_reg[`LM32_DTLB_ADDR_TAG_RNG]}, update_paddr_csr_reg[`LM32_DTLB_ADDRESS_PFN_RNG]};
+             : {`TRUE, {update_vaddr[`LM32_DTLB_ADDR_TAG_RNG]}, update_paddr[`LM32_DTLB_ADDRESS_PFN_RNG]};
 
 assign read_tag = read_data[`LM32_DTLB_TAG_RANGE];
 assign data_valid = read_data[`LM32_DTLB_VALID_BIT];
@@ -202,32 +202,12 @@ assign miss_int = (miss || miss_q);
 
 assign checking = state[0];
 assign flushing = state[1];
+assign stall_request = flushing;
+assign csr_dtlb_selected = (csr_write_data[0] == `TRUE);
 
 /////////////////////////////////////////////////////
 // Sequential logic
 /////////////////////////////////////////////////////
-
-// CSR Write
-always @(posedge clk_i `CFG_RESET_SENSITIVITY)
-begin
-    if (rst_i == `TRUE)
-    begin
-        update_vaddr_csr_reg <= `LM32_WORD_WIDTH'd0;
-        update_paddr_csr_reg <= `LM32_WORD_WIDTH'd0;
-    end
-    else
-    begin
-        if (csr_write_enable)
-        begin
-            case (csr)
-            `LM32_CSR_TLB_VADDRESS: if (csr_write_data[0]) update_vaddr_csr_reg[31:1] <= csr_write_data[31:1];
-            `LM32_CSR_TLB_PADDRESS: if (csr_write_data[0]) update_paddr_csr_reg[31:1] <= csr_write_data[31:1];
-            endcase
-        end
-        update_vaddr_csr_reg[0] <= 0;
-        update_paddr_csr_reg[0] <= 0;
-    end
-end
 
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
@@ -262,6 +242,8 @@ begin
     if (rst_i == `TRUE)
     begin
         $display("DTLB STATE MACHINE RESET");
+        update_vaddr <= {`LM32_WORD_WIDTH{1'b0}};
+        update_paddr <= {`LM32_WORD_WIDTH{1'b0}};
         invalidate <= 1;
         flush_set <= {addr_index_width{1'b1}};
         state <= `LM32_TLB_STATE_FLUSH;
@@ -275,21 +257,25 @@ begin
         begin
             update <= 0;
             invalidate <= 0;
-            if (csr_write_enable && csr_write_data[0])
+            if ((csr_write_enable == `TRUE) && (csr_dtlb_selected == `TRUE))
             begin
                 if (csr == `LM32_CSR_TLB_PADDRESS)
+                begin
+                    update_paddr <= {csr_write_data[31:1], 1'b0};
                     update <= 1;
+                end
                 else if (csr == `LM32_CSR_TLB_VADDRESS)
                 begin
-                    case (csr_write_data[5:1])
-                    `LM32_DTLB_CTRL_FLUSH:
+                    update_vaddr <= {csr_write_data[31:1], 1'b0};
+                    case (csr_write_data[`LM32_TLB_OP_RNG])
+                    `LM32_TLB_OP_FLUSH:
                     begin
                         invalidate <= 1;
                         flush_set <= {addr_index_width{1'b1}};
                         state <= `LM32_TLB_STATE_FLUSH;
                     end
 
-                    `LM32_TLB_CTRL_INVALIDATE_ENTRY:
+                    `LM32_TLB_OP_INVALIDATE:
                     begin
                         invalidate <= 1;
                         flush_set <= csr_write_data[`LM32_DTLB_IDX_RNG];
