@@ -262,12 +262,9 @@ begin
             if (csr_write_enable && csr_write_data[0])
             begin
                 if (csr == `LM32_CSR_TLB_PADDRESS)
-                begin
                     updating <= 1;
-                end
                 else if (csr == `LM32_CSR_TLB_VADDRESS)
                 begin
-                    updating <= 0;
                     case (csr_write_data[5:1])
                     `LM32_DTLB_CTRL_FLUSH:
                     begin
@@ -281,14 +278,11 @@ begin
                         flushing <= 1;
 //                      flush_set <= update_vaddr_csr_reg[`LM32_DTLB_IDX_RNG];
                         flush_set <= csr_write_data[`LM32_DTLB_IDX_RNG];
-                        updating <= 0;
                         state <= `LM32_TLB_STATE_CHECK;
                     end
 
                     endcase
                 end
-                else
-                    updating <= 0;
             end
         end
 
