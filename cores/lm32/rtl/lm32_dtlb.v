@@ -6,8 +6,9 @@
 `define LM32_DTLB_CTRL_UPDATE               5'h2
 `define LM32_TLB_CTRL_INVALIDATE_ENTRY      5'h10
 
-`define LM32_TLB_STATE_CHECK     2'b01
-`define LM32_TLB_STATE_FLUSH     2'b10
+`define LM32_DTLB_STATE_RNG                 1:0
+`define LM32_DTLB_STATE_CHECK               2'b01
+`define LM32_DTLB_STATE_FLUSH               2'b10
 
 /////////////////////////////////////////////////////
 // Module interface
@@ -123,10 +124,10 @@ wire [vpfn_width + addr_tag_width + 1 - 1:0] read_data; // +1 is for valid_bit
 
 reg [`LM32_WORD_RNG] update_vaddr_csr_reg = `LM32_WORD_WIDTH'd0;
 reg [`LM32_WORD_RNG] update_paddr_csr_reg = `LM32_WORD_WIDTH'd0;
-reg [1:0] state;
-reg updating;
+reg [`LM32_DTLB_STATE_RNG] state;                         // Current state of FSM
+reg update;
 reg [addr_index_width-1:0] update_set;
-reg flushing;
+reg invalidate;
 reg [addr_index_width-1:0] flush_set;
 wire miss;
 reg miss_q = `FALSE;
@@ -134,8 +135,9 @@ reg [`LM32_WORD_RNG] miss_address;
 wire data_valid;
 wire [`LM32_DTLB_LOOKUP_RANGE] lookup;
 wire checking;
+wire flushing;
 
-assign stall_request = (state == `LM32_TLB_STATE_FLUSH);
+assign stall_request = flushing;
 
 /////////////////////////////////////////////////////
 // Functions
@@ -180,13 +182,13 @@ assign tag_read_address = address_x[`LM32_DTLB_IDX_RNG];
 assign data_write_address = update_vaddr_csr_reg[`LM32_DTLB_IDX_RNG];
 
 assign data_read_port_enable = (stall_x == `FALSE) || !stall_m;
-assign write_port_enable = updating || flushing;
+assign write_port_enable = update || invalidate;
 
 assign physical_load_store_address_m = (enable == `FALSE)
                 ? address_m
                 : {lookup, address_m[`LM32_PAGE_OFFSET_RNG]};
 
-assign write_data = (flushing == `TRUE)
+assign write_data = (invalidate == `TRUE)
              ? {`FALSE, {addr_tag_width{1'b0}}, {vpfn_width{1'b0}}}
              : {`TRUE, {update_vaddr_csr_reg[`LM32_DTLB_ADDR_TAG_RNG]}, update_paddr_csr_reg[`LM32_DTLB_ADDRESS_PFN_RNG]};
 
@@ -198,6 +200,7 @@ assign miss = (enable == `TRUE) && (load_q_m || store_q_m) && ~(data_valid);
 assign miss_int = (miss || miss_q);
 
 assign checking = state[0];
+assign flushing = state[1];
 
 /////////////////////////////////////////////////////
 // Sequential logic
@@ -258,10 +261,10 @@ begin
     if (rst_i == `TRUE)
     begin
         $display("DTLB STATE MACHINE RESET");
-        flushing <= 1;
+        invalidate <= 1;
         flush_set <= {addr_index_width{1'b1}};
         state <= `LM32_TLB_STATE_FLUSH;
-        updating <= 0;
+        update <= 0;
     end
     else
     begin
@@ -269,25 +272,25 @@ begin
 
         `LM32_TLB_STATE_CHECK:
         begin
-            updating <= 0;
-            flushing <= 0;
+            update <= 0;
+            invalidate <= 0;
             if (csr_write_enable && csr_write_data[0])
             begin
                 if (csr == `LM32_CSR_TLB_PADDRESS)
-                    updating <= 1;
+                    update <= 1;
                 else if (csr == `LM32_CSR_TLB_VADDRESS)
                 begin
                     case (csr_write_data[5:1])
                     `LM32_DTLB_CTRL_FLUSH:
                     begin
-                        flushing <= 1;
+                        invalidate <= 1;
                         flush_set <= {addr_index_width{1'b1}};
                         state <= `LM32_TLB_STATE_FLUSH;
                     end
 
                     `LM32_TLB_CTRL_INVALIDATE_ENTRY:
                     begin
-                        flushing <= 1;
+                        invalidate <= 1;
 //                      flush_set <= update_vaddr_csr_reg[`LM32_DTLB_IDX_RNG];
                         flush_set <= csr_write_data[`LM32_DTLB_IDX_RNG];
                         state <= `LM32_TLB_STATE_CHECK;
@@ -300,7 +303,6 @@ begin
 
         `LM32_TLB_STATE_FLUSH:
         begin
-            updating <= 0;
             if (flush_set == {addr_index_width{1'b0}})
                 state <= `LM32_TLB_STATE_CHECK;
             flush_set <= flush_set - 1'b1;
