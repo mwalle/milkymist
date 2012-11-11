@@ -154,7 +154,7 @@ parameter base_address = 0;                             // Base address of cacha
 parameter limit = 0;                                    // Limit (highest address) of cachable memory
 
 // For bytes_per_line == 4, we set 1 so part-select range isn't reversed, even though not really used 
-localparam addr_offset_width = bytes_per_line == 4 ? 1 : $clog2(bytes_per_line)-2;
+localparam addr_offset_width = bytes_per_line == 4 ? 1 : `CLOG2(bytes_per_line)-2;
 localparam addr_offset_lsb = 2;
 localparam addr_offset_msb = (addr_offset_lsb+addr_offset_width-1);
 
@@ -332,18 +332,18 @@ wire kernel_mode;
        // ----- Parameters -------
        .pmi_family             (`LATTICE_FAMILY),
 
-       //.pmi_addr_depth_a       (1 << $clog2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
-       //.pmi_addr_width_a       ($clog2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
+       //.pmi_addr_depth_a       (1 << `CLOG2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
+       //.pmi_addr_width_a       (`CLOG2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
        //.pmi_data_width_a       (`LM32_WORD_WIDTH),
-       //.pmi_addr_depth_b       (1 << $clog2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
-       //.pmi_addr_width_b       ($clog2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
+       //.pmi_addr_depth_b       (1 << `CLOG2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
+       //.pmi_addr_width_b       (`CLOG2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
        //.pmi_data_width_b       (`LM32_WORD_WIDTH),
 	
        .pmi_addr_depth_a       (`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1),
-       .pmi_addr_width_a       ($clog2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
+       .pmi_addr_width_a       (`CLOG2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
        .pmi_data_width_a       (`LM32_WORD_WIDTH),
        .pmi_addr_depth_b       (`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1),
-       .pmi_addr_width_b       ($clog2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
+       .pmi_addr_width_b       (`CLOG2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)),
        .pmi_data_width_b       (`LM32_WORD_WIDTH),
 
        .pmi_regmode_a          ("noreg"),
@@ -362,8 +362,8 @@ wire kernel_mode;
 	    .ResetB                 (rst_i),
 	    .DataInA                ({32{1'b0}}),
 	    .DataInB                (dram_store_data_m),
-	    .AddressA               (load_store_address_x[$clog2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)+2-1:2]),
-	    .AddressB               (load_store_address_m[$clog2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)+2-1:2]),
+	    .AddressA               (load_store_address_x[`CLOG2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)+2-1:2]),
+	    .AddressB               (load_store_address_m[`CLOG2(`CFG_DRAM_LIMIT/4-`CFG_DRAM_BASE_ADDRESS/4+1)+2-1:2]),
 	    // .ClockEnA               (!stall_x & (load_x | store_x)),
 	    .ClockEnA               (!stall_x),
 	    .ClockEnB               (!stall_m),
