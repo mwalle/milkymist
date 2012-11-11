@@ -450,7 +450,12 @@ lm32_dcache #(
     .stall_x                (stall_x),
     .stall_m                (stall_m),
     .address_x              (load_store_address_x),
+`ifdef CFG_MMU_ENABLED
+    /* VIPT cache, address_m is (only) used for tag */
+    .address_m              (physical_load_store_address_m),
+`else
     .address_m              (load_store_address_m),
+`endif
     .load_q_m               (load_q_m & dcache_select_m),
     .store_q_m              (store_q_m & dcache_select_m),
     .store_data             (store_data_m),
@@ -459,8 +464,6 @@ lm32_dcache #(
     .refill_data            (wb_data_m),
     .dflush                 (dflush),
 `ifdef CFG_MMU_ENABLED
-    .dtlb_enable            (dtlb_enable),
-    .physical_address_m     (physical_load_store_address_m),
     .dtlb_miss              (dtlb_miss),
 `endif
     // ----- Outputs -----

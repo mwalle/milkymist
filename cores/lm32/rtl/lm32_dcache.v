@@ -92,14 +92,12 @@ module lm32_dcache (
     store_q_m,
     store_data,
     store_byte_select,
-`ifdef CFG_MMU_ENABLED
-    dtlb_enable,
-    physical_address_m,
-    dtlb_miss,
-`endif
     refill_ready,
     refill_data,
     dflush,
+`ifdef CFG_MMU_ENABLED
+    dtlb_miss,
+`endif
     // ----- Outputs -----
     stall_request,
     restart_request,
@@ -147,16 +145,14 @@ input store_q_m;                                        // Store instruction in 
 input [`LM32_WORD_RNG] store_data;                      // Data to store
 input [`LM32_BYTE_SELECT_RNG] store_byte_select;        // Which bytes in store data should be modified
 
-`ifdef CFG_MMU_ENABLED
-input dtlb_enable;
-input [`LM32_WORD_RNG] physical_address_m;              // M stage physical load/store address
-input dtlb_miss;
-`endif
-
 input refill_ready;                                     // Indicates next word of refill data is ready
 input [`LM32_WORD_RNG] refill_data;                     // Refill data
 
 input dflush;                                           // Indicates cache should be flushed
+
+`ifdef CFG_MMU_ENABLED
+input dtlb_miss;
+`endif
 
 /////////////////////////////////////////////////////
 // Outputs
@@ -309,11 +305,7 @@ generate
     begin : match
 
 assign way_match[i] =
-`ifdef CFG_MMU_ENABLED
-        ({way_tag[i], way_valid[i]} == {physical_address_m[`LM32_DC_ADDR_TAG_RNG], `TRUE});
-`else
         ({way_tag[i], way_valid[i]} == {address_m[`LM32_DC_ADDR_TAG_RNG], `TRUE});
-`endif
     end
 endgenerate
 
@@ -417,7 +409,11 @@ assign flushing = state[0];
 assign check = state[1];
 assign refill = state[2];
 
-assign miss = (~(|way_match)) && (load_q_m == `TRUE) && (stall_m == `FALSE) && (~dtlb_miss);
+assign miss = (~(|way_match)) && (load_q_m == `TRUE) && (stall_m == `FALSE)
+`ifdef CFG_MMU_ENABLED
+        && (~dtlb_miss)
+`endif
+        ;
 assign stall_request = (check == `FALSE);
 
 /////////////////////////////////////////////////////
@@ -481,11 +477,7 @@ begin
             if (miss == `TRUE)
             begin
                 refill_request <= `TRUE;
-`ifdef CFG_MMU_ENABLED
-                refill_address <= physical_address_m;
-`else
                 refill_address <= address_m;
-`endif
                 state <= `LM32_DC_STATE_REFILL;
             end
             else if (dflush == `TRUE)
@@ -543,6 +535,6 @@ end
     end
 endgenerate
 
-`endif
-
 endmodule
+
+`endif
