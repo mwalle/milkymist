@@ -427,7 +427,7 @@ lm32_dtlb dtlb (
     // ----- Outputs -----
     .physical_load_store_address_m (physical_load_store_address_m),
     .stall_request          (dtlb_stall_request),
-    .dtlb_miss_int          (dtlb_miss),
+    .miss_int               (dtlb_miss),
     .csr_read_data          (csr_read_data)
     );
 `endif
