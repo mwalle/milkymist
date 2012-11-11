@@ -130,9 +130,10 @@ reg flushing;
 reg [addr_index_width-1:0] flush_set;
 wire miss;
 reg miss_q = `FALSE;
-reg [`LM32_WORD_RNG] miss_addr;
+reg [`LM32_WORD_RNG] miss_address;
 wire data_valid;
 wire [`LM32_DTLB_LOOKUP_RANGE] lookup;
+wire checking;
 
 assign stall_request = (state == `LM32_TLB_STATE_FLUSH);
 
@@ -192,9 +193,11 @@ assign write_data = (flushing == `TRUE)
 assign read_tag = read_data[`LM32_DTLB_TAG_RANGE];
 assign data_valid = read_data[`LM32_DTLB_VALID_BIT];
 assign lookup = read_data[`LM32_DTLB_LOOKUP_RANGE];
-assign csr_read_data = miss_addr;
+assign csr_read_data = miss_address;
 assign miss = (enable == `TRUE) && (load_q_m || store_q_m) && ~(data_valid);
 assign miss_int = (miss || miss_q);
+
+assign checking = state[0];
 
 /////////////////////////////////////////////////////
 // Sequential logic
@@ -235,6 +238,21 @@ begin
     end
 end
 
+// Store last address that caused a DTLB miss
+always @(posedge clk_i `CFG_RESET_SENSITIVITY)
+begin
+    if (rst_i == `TRUE)
+        miss_address <= {`LM32_WORD_WIDTH{1'b0}};
+    else
+    begin
+        if ((checking ==`TRUE) && (miss == `TRUE))
+        begin
+            $display("WARNING : DTLB MISS on addr 0x%08X at time %t", address_m, $time);
+            miss_address <= address_m;
+        end
+    end
+end
+
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
     if (rst_i == `TRUE)
@@ -244,7 +262,6 @@ begin
         flush_set <= {addr_index_width{1'b1}};
         state <= `LM32_TLB_STATE_FLUSH;
         updating <= 0;
-        miss_addr <= `LM32_WORD_WIDTH'd0;
     end
     else
     begin
@@ -254,11 +271,6 @@ begin
         begin
             updating <= 0;
             flushing <= 0;
-            if (miss == `TRUE)
-            begin
-                miss_addr <= address_m;
-                $display("WARNING : DTLB MISS on addr 0x%08X at time %t", address_m, $time);
-            end
             if (csr_write_enable && csr_write_data[0])
             begin
                 if (csr == `LM32_CSR_TLB_PADDRESS)
