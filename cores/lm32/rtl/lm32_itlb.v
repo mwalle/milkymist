@@ -33,7 +33,8 @@ module lm32_itlb (
     csr,
     csr_write_data,
     csr_write_enable,
-    csr_psw,
+    itlbe,
+    eitlbe,
     exception_x,
     eret_q_x,
     exception_m,
@@ -104,7 +105,8 @@ input read_enable_f;                                // Indicates if cache access
 input [`LM32_CSR_RNG] csr;				// CSR read/write index
 input [`LM32_WORD_RNG] csr_write_data;			// Data to write to specified CSR
 input csr_write_enable;					// CSR write enable
-input [`LM32_WORD_RNG] csr_psw;
+input itlbe;
+input eitlbe;
 input exception_x;					// An exception occured in the X stage
 input exception_m;
 input eret_q_x;
@@ -307,8 +309,8 @@ begin
 		begin
 			if (eret_q_x)
 			begin
-//				$display("[%t] itlb_enabled <= 0x%08X upon eret", $time, csr_psw[`LM32_CSR_PSW_EITLBE]);
-				itlb_enabled <= csr_psw[`LM32_CSR_PSW_EITLBE];
+//				$display("[%t] itlb_enabled <= 0x%08X upon eret", $time, eitlbe);
+				itlb_enabled <= eitlbe;
 			end
 			else if (exception_x || in_exception)
 			begin
@@ -336,10 +338,10 @@ begin
 			end
 			else
 			begin
-				if (itlb_enabled != csr_psw[`LM32_CSR_PSW_ITLBE])
-					$display("[%t] itlb_enabled <= 0x%08X", $time, csr_psw[`LM32_CSR_PSW_ITLBE]);
+				if (itlb_enabled != itlbe)
+					$display("[%t] itlb_enabled <= 0x%08X", $time, itlbe);
 
-				itlb_enabled <= csr_psw[`LM32_CSR_PSW_ITLBE];
+				itlb_enabled <= itlbe;
 			end
 		end
 	end

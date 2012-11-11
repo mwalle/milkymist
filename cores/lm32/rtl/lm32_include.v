@@ -251,21 +251,6 @@
 `define LM32_CSR_TLB_PADDRESS           `LM32_CSR_WIDTH'h1f
 `endif
 
-`ifdef CFG_MMU_ENABLED
-`define LM32_CSR_PSW_IE                 `LM32_WORD_WIDTH'h0
-`define LM32_CSR_PSW_EIE                `LM32_WORD_WIDTH'h1
-`define LM32_CSR_PSW_BIE                `LM32_WORD_WIDTH'h2
-`define LM32_CSR_PSW_ITLBE              `LM32_WORD_WIDTH'h3
-`define LM32_CSR_PSW_EITLBE             `LM32_WORD_WIDTH'h4
-`define LM32_CSR_PSW_BITLBE             `LM32_WORD_WIDTH'h5
-`define LM32_CSR_PSW_DTLBE              `LM32_WORD_WIDTH'h6
-`define LM32_CSR_PSW_EDTLBE             `LM32_WORD_WIDTH'h7
-`define LM32_CSR_PSW_BDTLBE             `LM32_WORD_WIDTH'h8
-`define LM32_CSR_PSW_USR                `LM32_WORD_WIDTH'h9
-`define LM32_CSR_PSW_EUSR               `LM32_WORD_WIDTH'ha
-`define LM32_CSR_PSW_BUSR               `LM32_WORD_WIDTH'hb
-`endif
-
 // Values for WPC CSR
 `define LM32_WPC_C_RNG                  1:0
 `define LM32_WPC_C_DISABLED             2'b00

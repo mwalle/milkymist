@@ -800,12 +800,20 @@ reg ext_break_r;
 `endif
 
 `ifdef CFG_MMU_ENABLED
-wire itlb_enable;                               // Instruction TLB enable
-wire dtlb_enable;                               // Data TLB enable
 wire dtlb_stall_request;                        // Stall pipeline because data TLB is busy
 wire dtlb_miss_exception;
 wire itlb_miss_exception;
-reg [`LM32_WORD_RNG] lm32_csr_psw_reg;
+reg itlbe;
+reg dtlbe;
+reg usr;
+reg eitlbe;
+reg edtlbe;
+reg eusr;
+`ifdef CFG_DEBUG_ENABLED
+reg bdtlbe;
+reg bitlbe;
+reg busr;
+`endif
 `endif
 
 /////////////////////////////////////////////////////
@@ -871,8 +879,9 @@ lm32_instruction_unit #(
     .csr                    (csr_x),
     .csr_write_data         (operand_1_x),
     .csr_write_enable       (csr_write_enable_q_x),
+    .itlbe                  (itlbe),
+    .eitlbe                 (eitlbe),
     .eret_q_x               (eret_q_x),
-    .csr_psw                (lm32_csr_psw_reg),
     .q_x                    (q_x),
 `endif
 `ifdef CFG_IWB_ENABLED
@@ -1052,12 +1061,11 @@ lm32_load_store_unit #(
     .irom_data_m            (irom_data_m),
 `endif
 `ifdef CFG_MMU_ENABLED
-    .dtlb_enable            (dtlb_enable),
+    .dtlb_enable            (dtlbe),
     .csr                    (csr_x),
     .csr_write_data         (operand_1_x),
     .csr_write_enable       (csr_write_enable_q_x),
     .eret_q_x               (eret_q_x),
-    .csr_psw                (lm32_csr_psw_reg),
 `endif
     // From Wishbone
     .d_dat_i                (D_DAT_I),
@@ -2148,6 +2156,33 @@ assign cfg2 = {
 `endif
 		     };
 
+`ifdef CFG_MMU_ENABLED
+assign csr_psw_read_data_x = {{`LM32_WORD_WIDTH-12{1'b0}},
+`ifdef CFG_DEBUG_ENABLED
+                              busr,
+`else
+                              `FALSE,
+`endif
+                              eusr,
+                              usr,
+`ifdef CFG_DEBUG_ENABLED
+                              bdtlbe,
+`else
+                              `FALSE,
+`endif
+                              edtlbe,
+                              dtlbe,
+`ifdef CFG_DEBUG_ENABLED
+                              bitlbe,
+`else
+                              `FALSE,
+`endif
+                              eitlbe,
+                              itlbe,
+                              interrupt_csr_read_data_x[2:0]
+                             };
+`endif
+
 // Cache flush
 `ifdef CFG_ICACHE_ENABLED
 assign iflush = (   (csr_write_enable_d == `TRUE)
@@ -2200,81 +2235,99 @@ begin
     `LM32_CSR_JRX:  csr_read_data_x = jrx_csr_read_data;
 `endif
     `LM32_CSR_CFG2: csr_read_data_x = cfg2;
+`ifdef CFG_MMU_ENABLED
+    `LM32_CSR_PSW:	csr_read_data_x = csr_psw_read_data_x;
     `LM32_CSR_TLB_VADDRESS: csr_read_data_x = load_store_csr_read_data_x;
     `LM32_CSR_TLB_PADDRESS: csr_read_data_x = instruction_csr_read_data_x;
-    `LM32_CSR_PSW:	csr_read_data_x = lm32_csr_psw_reg;
+`endif
     default:        csr_read_data_x = {`LM32_WORD_WIDTH{1'bx}};
     endcase
 end
 
 `ifdef CFG_MMU_ENABLED
-assign itlb_enable = lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE];
-assign dtlb_enable = lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE];
-
+// Processor status word (PSW) handling
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
-	if (rst_i)
-	begin
-		lm32_csr_psw_reg <= `LM32_WORD_WIDTH'h0;
-	end
-	else
-	begin
+    if (rst_i)
+    begin
+        itlbe <= `FALSE;
+        eitlbe <= `FALSE;
+        dtlbe <= `FALSE;
+        edtlbe <= `FALSE;
+        usr <= `FALSE;
+        eusr <= `FALSE;
 `ifdef CFG_DEBUG_ENABLED
-		if (non_debug_exception_q_w == `TRUE)
-		begin
-		    // Save and then clear ITLB and DTLB enable
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_EITLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE];
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_EDTLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE];
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE] <= `FALSE;
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE] <= `FALSE;
-		end
-		else if (debug_exception_q_w == `TRUE)
-		begin
-		    // Save and then clear TLB enable
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_BITLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE];
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE] <= `FALSE;
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_BDTLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE];
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE] <= `FALSE;
-		end
+        bitlbe <= `FALSE;
+        bdtlbe <= `FALSE;
+        busr <= `FALSE;
+`endif
+    end
+    else
+    begin
+`ifdef CFG_DEBUG_ENABLED
+        if (non_debug_exception_q_w == `TRUE)
+        begin
+            // Save and then clear ITLB and DTLB enable
+            eitlbe <= itlbe;
+            itlbe <= `FALSE;
+            edtlbe <= dtlbe;
+            dtlbe <= `FALSE;
+        end
+        else if (debug_exception_q_w == `TRUE)
+        begin
+            // Save and then clear TLB enable
+            bitlbe <= itlbe;
+            itlbe <= `FALSE;
+            bdtlbe <= dtlbe;
+            dtlbe <= `FALSE;
+        end
 `else
-		if (exception_q_w == `TRUE)
-		begin
-		    // Save and then clear ITLB and DTLB enable
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_EITLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE];
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE] <= `FALSE;
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_EDTLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE];
-		    lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE] <= `FALSE;
-		end
+        if (exception_q_w == `TRUE)
+        begin
+            // Save and then clear ITLB and DTLB enable
+            eitlbe <= itlbe;
+            itlbe <= `FALSE;
+            edtlbe <= dtlbe;
+            dtlbe <= `FALSE;
+        end
 `endif
-		else if (stall_x == `FALSE)
-		begin
-		    if (eret_q_x == `TRUE)
-		    begin
-			// Restore ITLB and DTLB enable
-			lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_EITLBE];
-			lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_EDTLBE];
-		    end
+        else if (stall_x == `FALSE)
+        begin
+            if (eret_q_x == `TRUE)
+            begin
+                // Restore ITLB and DTLB enable
+                itlbe <= eitlbe;
+                dtlbe <= edtlbe;
+            end
 `ifdef CFG_DEBUG_ENABLED
-		    else if (bret_q_x == `TRUE)
-		    begin
-			// Restore ITLB and DTLB enable
-			lm32_csr_psw_reg[`LM32_CSR_PSW_ITLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_BITLBE];
-			lm32_csr_psw_reg[`LM32_CSR_PSW_DTLBE] <= lm32_csr_psw_reg[`LM32_CSR_PSW_BDTLBE];
-		    end
+            else if (bret_q_x == `TRUE)
+            begin
+                // Restore ITLB and DTLB enable
+                itlbe <= bitlbe;
+                dtlbe <= bdtlbe;
+            end
 `endif
-		    else if (csr_write_enable_q_x == `TRUE)
-		    begin
-			// Handle wcsr write
-			case (csr_x)
-			// operand_1_x is csr_write_data
-			`LM32_CSR_PSW:
-				lm32_csr_psw_reg <= operand_1_x;
-			`LM32_CSR_IE:
-				lm32_csr_psw_reg[2:0] <= operand_1_x[2:0];
-			endcase
-		    end
-		end
-	end
+            else if (csr_write_enable_q_x == `TRUE)
+            begin
+                // Handle wcsr write
+                if (csr_x == `LM32_CSR_PSW)
+                begin
+                    // ie, eie and bie are shadowed from IE register
+                    itlbe  <= operand_1_x[3];
+                    eitlbe <= operand_1_x[4];
+                    dtlbe  <= operand_1_x[6];
+                    edtlbe <= operand_1_x[7];
+                    usr    <= operand_1_x[9];
+                    eusr   <= operand_1_x[10];
+`ifdef CFG_DEBUG_ENABLED
+                    bitlbe <= operand_1_x[5];
+                    bdtlbe <= operand_1_x[8];
+                    busr   <= operand_1_x[11];
+`endif
+                end
+            end
+        end
+    end
 end
 `endif
 

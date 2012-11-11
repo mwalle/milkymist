@@ -101,7 +101,6 @@ module lm32_instruction_unit (
     exception_m,
 `ifdef CFG_MMU_ENABLED
     exception_x,
-    csr_psw,
 `endif
     branch_taken_m,
     branch_mispredict_taken_m,
@@ -125,6 +124,8 @@ module lm32_instruction_unit (
     csr_write_enable,
     eret_q_x,
     q_x,
+    itlbe,
+    eitlbe,
 `endif
 `ifdef CFG_IWB_ENABLED
     // From Wishbone
@@ -267,10 +268,11 @@ input [`LM32_WORD_RNG] jtag_address;                    // JTAG read/write addre
 input exception_x;                                      // An exception occured in the X stage
 input eret_q_x;
 input q_x;
+input itlbe;
+input eitlbe;
 input [`LM32_CSR_RNG] csr;				// CSR read/write index
 input [`LM32_WORD_RNG] csr_write_data;			// Data to write to specified CSR
 input csr_write_enable;					// CSR write enable
-input [`LM32_WORD_RNG] csr_psw;
 `endif
 
 /////////////////////////////////////////////////////
@@ -492,7 +494,8 @@ lm32_itlb itlb (
     .csr                    (csr),
     .csr_write_data         (csr_write_data),
     .csr_write_enable       (csr_write_enable),
-    .csr_psw                (csr_psw),
+    .itlbe                  (itlbe),
+    .eitlbe                 (eitlbe),
     .exception_x            (exception_x),
     .eret_q_x               (eret_q_x),
     .exception_m            (exception_m),
