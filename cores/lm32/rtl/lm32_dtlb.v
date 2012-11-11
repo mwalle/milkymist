@@ -134,7 +134,7 @@ reg [`LM32_WORD_RNG] dtlb_miss_addr;
 wire dtlb_data_valid;
 wire [`LM32_DTLB_LOOKUP_RANGE] dtlb_lookup;
 
-assign stall_request = (dtlb_state == `LM32_TLB_STATE_FLUSH) && (enable == `TRUE);
+assign stall_request = (dtlb_state == `LM32_TLB_STATE_FLUSH);
 
 /////////////////////////////////////////////////////
 // Functions
