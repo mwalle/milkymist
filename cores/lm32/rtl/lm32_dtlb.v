@@ -126,7 +126,6 @@ reg [`LM32_WORD_RNG] update_vaddr_csr_reg = `LM32_WORD_WIDTH'd0;
 reg [`LM32_WORD_RNG] update_paddr_csr_reg = `LM32_WORD_WIDTH'd0;
 reg [`LM32_DTLB_STATE_RNG] state;                         // Current state of FSM
 reg update;
-reg [addr_index_width-1:0] update_set;
 reg invalidate;
 reg [addr_index_width-1:0] flush_set;
 wire miss;
@@ -179,7 +178,9 @@ assign data_read_address = address_x[`LM32_DTLB_IDX_RNG];
 assign tag_read_address = address_x[`LM32_DTLB_IDX_RNG];
 
 // tlb_update_address will receive data from a CSR register
-assign data_write_address = update_vaddr_csr_reg[`LM32_DTLB_IDX_RNG];
+assign data_write_address = (flushing == `TRUE)
+                            ? flush_set
+                            : update_vaddr_csr_reg[`LM32_DTLB_IDX_RNG];
 
 assign data_read_port_enable = (stall_x == `FALSE) || !stall_m;
 assign write_port_enable = update || invalidate;
@@ -291,7 +292,6 @@ begin
                     `LM32_TLB_CTRL_INVALIDATE_ENTRY:
                     begin
                         invalidate <= 1;
-//                      flush_set <= update_vaddr_csr_reg[`LM32_DTLB_IDX_RNG];
                         flush_set <= csr_write_data[`LM32_DTLB_IDX_RNG];
                         state <= `LM32_TLB_STATE_CHECK;
                     end
