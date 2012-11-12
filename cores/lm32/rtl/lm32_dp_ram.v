@@ -55,16 +55,6 @@ assign rdata_o = mem[raddr_r];
 // Sequential logic
 /////////////////////////////////////////////////////
 
-integer i;
-
-initial
-begin
-	for (i = addr_depth-1 ; i >= 0 ; i = i-1)
-	begin
-		ram[i] <= {data_width{1'b0}};
-	end
-end
-
 always @(posedge clk_i)
 begin
 	if (we_i)
