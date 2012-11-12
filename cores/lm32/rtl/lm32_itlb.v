@@ -325,7 +325,7 @@ begin
 				begin
 					if (exception_m)
 					begin
-						$display("[%t] pc_exception <= 0x%08X", $time, pc_m);
+						//$display("[%t] pc_exception <= 0x%08X", $time, pc_m);
 						pc_exception <= pc_m;
 					end
 					if (pc_exception == pc_w)
@@ -333,13 +333,13 @@ begin
 						in_exception <= 0;
 					end
 				end
-				$display("[%t] itlb_enabled <= 0x%08X upon exception", $time, 0);
+				//$display("[%t] itlb_enabled <= 0x%08X upon exception", $time, 0);
 				itlb_enabled <= 0;
 			end
 			else
 			begin
-				if (itlb_enabled != itlbe)
-					$display("[%t] itlb_enabled <= 0x%08X", $time, itlbe);
+				//if (itlb_enabled != itlbe)
+					//$display("[%t] itlb_enabled <= 0x%08X", $time, itlbe);
 
 				itlb_enabled <= itlbe;
 			end
@@ -351,7 +351,7 @@ always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
 	if (rst_i == `TRUE)
 	begin
-		$display("ITLB STATE MACHINE RESET");
+		//$display("ITLB STATE MACHINE RESET");
 		itlb_flushing <= 1;
 		itlb_flush_set <= {addr_itlb_index_width{1'b1}};
 		itlb_state <= `LM32_TLB_STATE_FLUSH;
@@ -369,13 +369,13 @@ begin
 			if (itlb_miss == `TRUE)
 			begin
 				itlb_miss_addr <= pc_f;
-				$display("WARNING : ITLB MISS on addr 0x%08X at time %t", pc_f * 4, $time);
+				//$display("WARNING : ITLB MISS on addr 0x%08X at time %t", pc_f * 4, $time);
 			end
 			if (csr_write_enable && ~csr_write_data[0])
 			begin
 				if (csr == `LM32_CSR_TLB_PADDRESS /*&& (kernel_mode_reg == `LM32_KERNEL_MODE)*/)
 				begin
-					$display("[%t] ITLB WCSR to PADDR with csr_write_data == 0x%08X", $time, csr_write_data);
+					//$display("[%t] ITLB WCSR to PADDR with csr_write_data == 0x%08X", $time, csr_write_data);
 `ifdef CFG_VERBOSE_DISPLAY_ENABLED
 					$display("it's an UPDATE at %t", $time);
 `endif

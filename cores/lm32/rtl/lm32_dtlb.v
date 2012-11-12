@@ -5,7 +5,7 @@
 `define LM32_TLB_OP_RNG                     5:1
 `define LM32_TLB_OP_NOOP                    5'h0
 `define LM32_TLB_OP_FLUSH                   5'h1
-`define LM32_TLB_OP_INVALIDATE              5'h10
+`define LM32_TLB_OP_INVALIDATE              5'h2
 
 `define LM32_DTLB_STATE_RNG                 1:0
 `define LM32_DTLB_STATE_CHECK               2'b01
@@ -231,7 +231,7 @@ begin
     begin
         if ((checking ==`TRUE) && (miss == `TRUE))
         begin
-            $display("WARNING : DTLB MISS on addr 0x%08X at time %t", address_m, $time);
+            //$display("WARNING : DTLB MISS on addr 0x%08X at time %t", address_m, $time);
             miss_address <= address_m;
         end
     end
@@ -241,7 +241,7 @@ always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
     if (rst_i == `TRUE)
     begin
-        $display("DTLB STATE MACHINE RESET");
+        //$display("DTLB STATE MACHINE RESET");
         update_vaddr <= {`LM32_WORD_WIDTH{1'b0}};
         update_paddr <= {`LM32_WORD_WIDTH{1'b0}};
         invalidate <= 1;
