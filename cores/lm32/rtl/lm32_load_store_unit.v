@@ -82,6 +82,10 @@ module lm32_load_store_unit (
     load_store_address_x,
     load_store_address_m,
     load_store_address_w,
+`ifdef CFG_MMU_ENABLED
+    load_d,
+    store_d,
+`endif
     load_x,
     store_x,
     load_q_x,
@@ -183,6 +187,10 @@ input [`LM32_WORD_RNG] store_operand_x;                 // Data read from regist
 input [`LM32_WORD_RNG] load_store_address_x;            // X stage load/store address
 input [`LM32_WORD_RNG] load_store_address_m;            // M stage load/store address
 input [1:0] load_store_address_w;                       // W stage load/store address (only least two significant bits are needed)
+`ifdef CFG_MMU_ENABLED
+input load_d;                                           // Load instruction in D stage
+input store_d;                                          // Store instruction in D stage
+`endif
 input load_x;                                           // Load instruction in X stage
 input store_x;                                          // Store instruction in X stage
 input load_q_x;                                         // Load instruction in X stage
@@ -416,18 +424,17 @@ lm32_dtlb dtlb (
     .stall_m                (stall_m),
     .address_x              (load_store_address_x),
     .address_m              (load_store_address_m),
-    .load_q_m               (load_q_m & dcache_select_m),
-    .store_q_m              (store_q_m & dcache_select_m),
+    .load_d                 (load_d),
+    .store_d                (store_d),
+    .load_q_x               (load_q_x),
+    .store_q_x              (store_q_x),
     .csr                    (csr),
     .csr_write_data         (csr_write_data),
     .csr_write_enable       (csr_write_enable),
-    .exception_x            (exception_x),
-    .eret_q_x               (eret_q_x),
-    .exception_m            (exception_m),
     // ----- Outputs -----
     .physical_load_store_address_m (physical_load_store_address_m),
     .stall_request          (dtlb_stall_request),
-    .miss_int               (dtlb_miss),
+    .miss                   (dtlb_miss),
     .csr_read_data          (csr_read_data)
     );
 `endif
@@ -778,9 +785,6 @@ begin
 `endif
 `ifdef CFG_IROM_ENABLED
 		     && (irom_select_m == `FALSE)
-`endif
-`ifdef CFG_MMU_ENABLED
-		     && (dtlb_miss == `FALSE)
 `endif
                     )
             begin

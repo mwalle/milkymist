@@ -1046,6 +1046,10 @@ lm32_load_store_unit #(
     .load_store_address_x   (adder_result_x),
     .load_store_address_m   (operand_m),
     .load_store_address_w   (operand_w[1:0]),
+`ifdef CFG_MMU_ENABLED
+    .load_d                 (load_d),
+    .store_d                (store_d),
+`endif
     .load_x                 (load_x),
     .store_x                (store_x),
     .load_q_x               (load_q_x),
@@ -1090,7 +1094,7 @@ lm32_load_store_unit #(
     .stall_wb_load          (stall_wb_load),
 `ifdef CFG_MMU_ENABLED
     .dtlb_stall_request     (dtlb_stall_request),
-    .dtlb_miss		    (dtlb_miss_exception),
+    .dtlb_miss              (dtlb_miss_exception),
     .csr_read_data          (load_store_csr_read_data_x),
 `endif
     // To Wishbone
@@ -2005,7 +2009,7 @@ assign stall_m =    (stall_wb_load == `TRUE)
                  || (dcache_stall_request == `TRUE)     // Need to stall in case a taken branch is in M stage and data cache is only being flush, so wont be restarted
 `endif
 `ifdef CFG_MMU_ENABLED
-                 || (dtlb_stall_request == `TRUE)       // XXX describe me
+                 || (dtlb_stall_request == `TRUE)       // DTLB is busy or a lookup is in progress
 `endif
 `ifdef CFG_ICACHE_ENABLED
                  || (icache_stall_request == `TRUE)     // Pipeline needs to be stalled otherwise branches may be lost
