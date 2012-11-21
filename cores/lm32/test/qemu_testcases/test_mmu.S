@@ -21,12 +21,35 @@ test_name MMU_DTLB_ON
 
 test_name MMU_DTLB_MISS_1
     calli enable_dtlb
+1:
     lw r3, (r1+0x1004)
     calli disable_dtlb
     check_excp 128
 
 test_name MMU_DTLB_MISS_2
+    check_reg ea 1b
+
+test_name MMU_DTLB_MISS_3
     check_reg r24 data2+0x1004
+
+test_name MMU_DTLB_MISS_4
+    calli enable_dtlb
+    lw r3, (r1+0x1004)
+    lw r3, (r1+0x1004)
+    calli disable_dtlb
+    check_excp 128
+
+test_name MMU_DTLB_MISS_5
+    calli enable_dtlb
+	mvi r3, 0x1234
+    sw (r1+4), r3
+    lw r3, (r1+0x1004)
+    calli disable_dtlb
+    check_excp 128
+
+test_name MMU_DTLB_MISS_6
+    lw r3, (r2+4)
+	check_r3 0x1234
 
 test_name MMU_DTLB_FLUSH
     calli enable_dtlb
@@ -47,6 +70,8 @@ test_name MMU_DTLB_INV
     lw r3, (r1+0)
     calli disable_dtlb
     check_excp 128
+
+end
 
 # make sure we have a mapping for the current code
 mvhi r1, hi(initial_page)
