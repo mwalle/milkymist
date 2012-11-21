@@ -126,6 +126,19 @@ end
 assign i_dat = pmem_dat_o;
 assign pmem_adr = i_adr[15:2];
 
+task dump_processor_state;
+begin
+	$display("Processor state:");
+	for(i=0; i<32; i=i+1) begin
+		if(i%4 == 0)
+			$write("  ");
+		$write("r%02d=%08x ", i, lm32.cpu.reg_0.mem[i]);
+		if((i+1)%4 == 0)
+			$write("\n");
+	end
+end
+endtask
+
 // QEMU test core
 reg [15:0] testname_adr;
 reg [8*32:0] testname;
@@ -149,6 +162,8 @@ always @(posedge sys_clk) begin
 					testname[7:0] = 8'b0;
 			end
 			$display("TC %-32s %s", testname, (|d_dat_o) ? "FAILED" : "OK");
+			if(|d_dat_o)
+				dump_processor_state();
 		end
 		else if(d_adr == 32'hffff0008)
 			testname_adr <= d_dat_o[15:0];
