@@ -616,8 +616,6 @@ wire mc_stall_request_x;                        // Multi-cycle arithmetic unit s
 wire [`LM32_WORD_RNG] mc_result_x;
 `endif
 
-wire [`LM32_WORD_RNG] load_store_csr_read_data_x;// Data read from load store unit CSRs
-wire [`LM32_WORD_RNG] instruction_csr_read_data_x;// Data read from instruction unit CSRs
 // From CSRs
 `ifdef CFG_INTERRUPTS_ENABLED
 wire [`LM32_WORD_RNG] interrupt_csr_read_data_x;// Data read from interrupt CSRs
@@ -800,6 +798,14 @@ reg ext_break_r;
 `endif
 
 `ifdef CFG_MMU_ENABLED
+reg itlb_invalidate;
+reg itlb_flush;
+reg dtlb_invalidate;
+reg dtlb_flush;
+reg itlb_update;
+reg dtlb_update;
+reg [`LM32_WORD_RNG] tlbpaddr;
+reg [`LM32_WORD_RNG] tlbvaddr;
 wire dtlb_stall_request;                        // Stall pipeline because data TLB is busy
 wire dtlb_miss_exception;
 wire itlb_miss_exception;
@@ -917,7 +923,6 @@ lm32_instruction_unit #(
 `endif
 `ifdef CFG_MMU_ENABLED
     .itlb_miss		    (itlb_miss_exception),
-    .csr_read_data	    (instruction_csr_read_data_x),
 `endif
 `ifdef CFG_IWB_ENABLED
     // To Wishbone
@@ -1066,10 +1071,11 @@ lm32_load_store_unit #(
 `endif
 `ifdef CFG_MMU_ENABLED
     .dtlb_enable            (dtlbe),
-    .csr                    (csr_x),
-    .csr_write_data         (operand_1_x),
-    .csr_write_enable       (csr_write_enable_q_x),
-    .eret_q_x               (eret_q_x),
+    .tlbpaddr               (tlbpaddr),
+    .tlbvaddr               (tlbvaddr),
+    .dtlb_update            (dtlb_update),
+    .dtlb_flush             (dtlb_flush),
+    .dtlb_invalidate        (dtlb_invalidate),
 `endif
     // From Wishbone
     .d_dat_i                (D_DAT_I),
@@ -1095,7 +1101,6 @@ lm32_load_store_unit #(
 `ifdef CFG_MMU_ENABLED
     .dtlb_stall_request     (dtlb_stall_request),
     .dtlb_miss              (dtlb_miss_exception),
-    .csr_read_data          (load_store_csr_read_data_x),
 `endif
     // To Wishbone
     .d_dat_o                (D_DAT_O),
@@ -2241,8 +2246,8 @@ begin
     `LM32_CSR_CFG2: csr_read_data_x = cfg2;
 `ifdef CFG_MMU_ENABLED
     `LM32_CSR_PSW:	csr_read_data_x = csr_psw_read_data_x;
-    `LM32_CSR_TLB_VADDRESS: csr_read_data_x = load_store_csr_read_data_x;
-    `LM32_CSR_TLB_PADDRESS: csr_read_data_x = instruction_csr_read_data_x;
+    `LM32_CSR_TLB_VADDRESS: csr_read_data_x = tlbvaddr;
+    `LM32_CSR_TLB_PADDRESS: csr_read_data_x = tlbpaddr;
 `endif
     default:        csr_read_data_x = {`LM32_WORD_WIDTH{1'bx}};
     endcase
@@ -2338,6 +2343,75 @@ end
 /////////////////////////////////////////////////////
 // Sequential Logic
 /////////////////////////////////////////////////////
+
+`ifdef CFG_MMU_ENABLED
+// TLBVADDR CSR
+always @(posedge clk_i `CFG_RESET_SENSITIVITY)
+begin
+    if (rst_i == `TRUE)
+    begin
+        itlb_flush <= `FALSE;
+        itlb_invalidate <= `FALSE;
+        dtlb_flush <= `FALSE;
+        dtlb_invalidate <= `FALSE;
+        tlbvaddr <= {`LM32_WORD_WIDTH{1'b0}};
+    end
+    else
+    begin
+        itlb_flush <= `FALSE;
+        itlb_invalidate <= `FALSE;
+        dtlb_flush <= `FALSE;
+        dtlb_invalidate <= `FALSE;
+        if (dtlb_miss_exception == `TRUE)
+            tlbvaddr <= adder_result_x;
+        else if (itlb_miss_exception == `TRUE)
+            tlbvaddr <= {pc_x, {`LM32_WORD_WIDTH-`LM32_PC_WIDTH{1'b0}}};
+        else if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLB_VADDRESS) && (stall_x == `FALSE))
+        begin
+            tlbvaddr <= operand_1_x;
+            if (operand_1_x[0] == 1'b0)
+            begin
+                case (operand_1_x[`LM32_TLB_OP_RNG])
+                `LM32_TLB_OP_FLUSH:      itlb_flush <= `TRUE;
+                `LM32_TLB_OP_INVALIDATE: itlb_invalidate <= `TRUE;
+                endcase
+            end
+            if (operand_1_x[0] == 1'b1)
+            begin
+                case (operand_1_x[`LM32_TLB_OP_RNG])
+                `LM32_TLB_OP_FLUSH:      dtlb_flush <= `TRUE;
+                `LM32_TLB_OP_INVALIDATE: dtlb_invalidate <= `TRUE;
+                endcase
+            end
+        end
+    end
+end
+
+// TLBPADDR CSR
+always @(posedge clk_i `CFG_RESET_SENSITIVITY)
+begin
+    if (rst_i == `TRUE)
+    begin
+        itlb_update <= `FALSE;
+        dtlb_update <= `FALSE;
+        tlbpaddr <= {`LM32_WORD_WIDTH{1'b0}};
+    end
+    else
+    begin
+        itlb_update <= `FALSE;
+        dtlb_update <= `FALSE;
+        if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLB_PADDRESS) && (stall_x == `FALSE))
+        begin
+			/* updates take change in the M stage */
+            tlbpaddr <= operand_1_x;
+            if (operand_1_x[0] == 1'b0)
+                itlb_update <= `TRUE;
+            if (operand_1_x[0] == 1'b1)
+                dtlb_update <= `TRUE;
+        end
+    end
+end
+`endif
 
 // Exception Base Address (EBA) CSR
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)

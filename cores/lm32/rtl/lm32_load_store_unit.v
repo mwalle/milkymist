@@ -101,11 +101,12 @@ module lm32_load_store_unit (
     irom_data_m,
 `endif
 `ifdef CFG_MMU_ENABLED
-    csr,
-    csr_write_data,
-    csr_write_enable,
-    eret_q_x,
-	dtlb_enable,
+    dtlb_enable,
+    tlbpaddr,
+    tlbvaddr,
+    dtlb_update,
+    dtlb_flush,
+    dtlb_invalidate,
 `endif
     // From Wishbone
     d_dat_i,
@@ -131,7 +132,6 @@ module lm32_load_store_unit (
 `ifdef CFG_MMU_ENABLED
     dtlb_stall_request,
     dtlb_miss,
-    csr_read_data,
 `endif
     // To Wishbone
     d_dat_o,
@@ -178,9 +178,11 @@ input eret_q_x;
 
 `ifdef CFG_MMU_ENABLED
 input dtlb_enable;
-input [`LM32_CSR_RNG] csr;				// CSR read/write index
-input [`LM32_WORD_RNG] csr_write_data;			// Data to write to specified CSR
-input csr_write_enable;					// CSR write enable
+input [`LM32_WORD_RNG] tlbvaddr;
+input [`LM32_WORD_RNG] tlbpaddr;
+input dtlb_update;
+input dtlb_flush;
+input dtlb_invalidate;
 `endif
 
 input [`LM32_WORD_RNG] store_operand_x;                 // Data read from register to store
@@ -231,8 +233,6 @@ wire   dcache_refilling;
 `ifdef CFG_MMU_ENABLED
 output dtlb_stall_request;                              // Data TLB stall request
 wire   dtlb_stall_request;
-output [`LM32_WORD_RNG] csr_read_data;
-wire   [`LM32_WORD_RNG] csr_read_data;
 output dtlb_miss;
 wire   dtlb_miss;
 `endif
@@ -428,14 +428,15 @@ lm32_dtlb dtlb (
     .store_d                (store_d),
     .load_q_x               (load_q_x),
     .store_q_x              (store_q_x),
-    .csr                    (csr),
-    .csr_write_data         (csr_write_data),
-    .csr_write_enable       (csr_write_enable),
+    .tlbpaddr               (tlbpaddr),
+    .tlbvaddr               (tlbvaddr),
+    .update                 (dtlb_update),
+    .flush                  (dtlb_flush),
+    .invalidate             (dtlb_invalidate),
     // ----- Outputs -----
     .physical_load_store_address_m (physical_load_store_address_m),
     .stall_request          (dtlb_stall_request),
-    .miss                   (dtlb_miss),
-    .csr_read_data          (csr_read_data)
+    .miss                   (dtlb_miss)
     );
 `endif
 

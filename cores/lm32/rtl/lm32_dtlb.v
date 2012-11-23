@@ -2,11 +2,6 @@
 
 `ifdef CFG_MMU_ENABLED
 
-`define LM32_TLB_OP_RNG                     5:1
-`define LM32_TLB_OP_NOOP                    5'h0
-`define LM32_TLB_OP_FLUSH                   5'h1
-`define LM32_TLB_OP_INVALIDATE              5'h2
-
 `define LM32_DTLB_STATE_RNG                 1:0
 `define LM32_DTLB_STATE_CHECK               2'b01
 `define LM32_DTLB_STATE_FLUSH               2'b10
@@ -39,14 +34,15 @@ module lm32_dtlb (
     store_q_x,
     load_q_m,
     store_q_m,
-    csr,
-    csr_write_data,
-    csr_write_enable,
+    tlbpaddr,
+    tlbvaddr,
+    update,
+    flush,
+    invalidate,
     // ----- Outputs -----
     physical_load_store_address_m,
     stall_request,
-    miss,
-    csr_read_data
+    miss
     );
 
 /////////////////////////////////////////////////////
@@ -90,9 +86,11 @@ input store_q_x;                                        // Store instruction in 
 input load_q_m;                                         // Load instruction in M stage
 input store_q_m;                                        // Store instruction in M stage
 
-input [`LM32_CSR_RNG] csr;                              // CSR read/write index
-input [`LM32_WORD_RNG] csr_write_data;                  // Data to write to specified CSR
-input csr_write_enable;                                 // CSR write enable
+input [`LM32_WORD_RNG] tlbvaddr;
+input [`LM32_WORD_RNG] tlbpaddr;
+input update;
+input flush;
+input invalidate;
 
 /////////////////////////////////////////////////////
 // Outputs
@@ -120,16 +118,10 @@ wire pte_valid_x;
 wire checking;
 wire flushing;
 wire write_port_enable;
-wire csr_dtlb_selected;
 
-reg [`LM32_WORD_RNG] update_vaddr;
-reg [`LM32_WORD_RNG] update_paddr;
 reg [`LM32_DTLB_STATE_RNG] state;                         // Current state of FSM
 reg [`LM32_DTLB_ADDR_RNG] flush_set;
-reg [`LM32_WORD_RNG] miss_address;
 reg [`LM32_DTLB_VPFN_RNG] pte_pfn_m;
-reg update;
-reg invalidate;
 reg lookup;
 
 
@@ -173,19 +165,17 @@ assign read_address = address_x[`LM32_DTLB_IDX_RNG];
 // tlb_update_address will receive data from a CSR register
 assign write_address = (flushing == `TRUE)
                             ? flush_set
-                            : update_vaddr[`LM32_DTLB_IDX_RNG];
+                            : tlbvaddr[`LM32_DTLB_IDX_RNG];
 
-assign write_port_enable = update || invalidate;
+assign write_port_enable = (update == `TRUE) || (invalidate == `TRUE) || (flushing == `TRUE);
 
 assign physical_load_store_address_m = (enable == `FALSE)
                 ? address_m
                 : {pte_pfn_m, address_m[`LM32_DTLB_OFFSET_RNG]};
 
-assign write_data = (invalidate == `TRUE)
+assign write_data = ((invalidate == `TRUE) || (flushing))
              ? {{`LM32_DTLB_DATA_WIDTH-1{1'b0}}, `FALSE}
-             : {update_paddr[`LM32_DTLB_VPFN_RNG], update_vaddr[`LM32_DTLB_TAG_RNG], `TRUE};
-
-assign csr_read_data = miss_address;
+             : {tlbpaddr[`LM32_DTLB_VPFN_RNG], tlbvaddr[`LM32_DTLB_TAG_RNG], `TRUE};
 
 assign pte_match = ({pte_tag_x, pte_valid_x} == {address_x[`LM32_DTLB_TAG_RNG], `TRUE});
 
@@ -194,26 +184,10 @@ assign miss = ((enable == `TRUE) && ((load_q_x == `TRUE) || (store_q_x == `TRUE)
 assign checking = state[0];
 assign flushing = state[1];
 assign stall_request = (flushing == `TRUE) || (lookup == `TRUE);
-assign csr_dtlb_selected = (csr_write_data[0] == `TRUE);
 
 /////////////////////////////////////////////////////
 // Sequential logic
 /////////////////////////////////////////////////////
-
-// Store last address that caused a DTLB miss
-always @(posedge clk_i `CFG_RESET_SENSITIVITY)
-begin
-    if (rst_i == `TRUE)
-        miss_address <= {`LM32_WORD_WIDTH{1'b0}};
-    else
-    begin
-        if ((checking == `TRUE) && (miss == `TRUE))
-        begin
-            //$display("WARNING : DTLB MISS on addr 0x%08X at time %t", address_m, $time);
-            miss_address <= address_m;
-        end
-    end
-end
 
 // Lookup logic
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)
@@ -224,8 +198,8 @@ begin
     begin
         if ((enable == `TRUE) && (stall_x == `FALSE) && ((load_d == `TRUE) || (store_d == `TRUE)))
             lookup <= `TRUE;
-		else
-			lookup <= `FALSE;
+        else
+            lookup <= `FALSE;
     end
 end
 
@@ -242,13 +216,8 @@ always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
     if (rst_i == `TRUE)
     begin
-        //$display("DTLB STATE MACHINE RESET");
-        update_vaddr <= {`LM32_WORD_WIDTH{1'b0}};
-        update_paddr <= {`LM32_WORD_WIDTH{1'b0}};
-        invalidate <= 1;
         flush_set <= {index_width{1'b1}};
         state <= `LM32_TLB_STATE_FLUSH;
-        update <= 0;
     end
     else
     begin
@@ -256,35 +225,9 @@ begin
 
         `LM32_DTLB_STATE_CHECK:
         begin
-            update <= 0;
-            invalidate <= 0;
-            if ((csr_write_enable == `TRUE) && (csr_dtlb_selected == `TRUE))
-            begin
-                if (csr == `LM32_CSR_TLB_PADDRESS)
-                begin
-                    update_paddr <= {csr_write_data[31:1], 1'b0};
-                    update <= 1;
-                end
-                else if (csr == `LM32_CSR_TLB_VADDRESS)
-                begin
-                    update_vaddr <= {csr_write_data[31:1], 1'b0};
-                    case (csr_write_data[`LM32_TLB_OP_RNG])
-                    `LM32_TLB_OP_FLUSH:
-                    begin
-                        invalidate <= 1;
-                        flush_set <= {index_width{1'b1}};
-                        state <= `LM32_DTLB_STATE_FLUSH;
-                    end
-
-                    `LM32_TLB_OP_INVALIDATE:
-                    begin
-                        invalidate <= 1;
-                        flush_set <= csr_write_data[`LM32_DTLB_IDX_RNG];
-                        state <= `LM32_DTLB_STATE_CHECK;
-                    end
-
-                    endcase
-                end
+            if (flush == `TRUE) begin
+                flush_set <= {index_width{1'b1}};
+                state <= `LM32_DTLB_STATE_FLUSH;
             end
         end
 
