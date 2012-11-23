@@ -2246,8 +2246,8 @@ begin
     `LM32_CSR_CFG2: csr_read_data_x = cfg2;
 `ifdef CFG_MMU_ENABLED
     `LM32_CSR_PSW:	csr_read_data_x = csr_psw_read_data_x;
-    `LM32_CSR_TLB_VADDRESS: csr_read_data_x = tlbvaddr;
-    `LM32_CSR_TLB_PADDRESS: csr_read_data_x = tlbpaddr;
+    `LM32_CSR_TLBVADDR: csr_read_data_x = tlbvaddr;
+    `LM32_CSR_TLBPADDR: csr_read_data_x = tlbpaddr;
 `endif
     default:        csr_read_data_x = {`LM32_WORD_WIDTH{1'bx}};
     endcase
@@ -2366,7 +2366,7 @@ begin
             tlbvaddr <= adder_result_x;
         else if (itlb_miss_exception == `TRUE)
             tlbvaddr <= {pc_x, {`LM32_WORD_WIDTH-`LM32_PC_WIDTH{1'b0}}};
-        else if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLB_VADDRESS) && (stall_x == `FALSE))
+        else if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBVADDR) && (stall_x == `FALSE))
         begin
             tlbvaddr <= operand_1_x;
             if (operand_1_x[0] == 1'b0)
@@ -2400,7 +2400,7 @@ begin
     begin
         itlb_update <= `FALSE;
         dtlb_update <= `FALSE;
-        if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLB_PADDRESS) && (stall_x == `FALSE))
+        if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBPADDR) && (stall_x == `FALSE))
         begin
 			/* updates take change in the M stage */
             tlbpaddr <= operand_1_x;

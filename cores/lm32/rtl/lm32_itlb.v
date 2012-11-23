@@ -283,8 +283,8 @@ begin
 		if (csr_write_enable)
 		begin
 			case (csr)
-			`LM32_CSR_TLB_VADDRESS: if (~csr_write_data[0]) itlb_update_vaddr_csr_reg[31:1] <= csr_write_data[31:1];
-			`LM32_CSR_TLB_PADDRESS: if (~csr_write_data[0]) itlb_update_paddr_csr_reg[31:1] <= csr_write_data[31:1];
+			`LM32_CSR_TLBVADDR: if (~csr_write_data[0]) itlb_update_vaddr_csr_reg[31:1] <= csr_write_data[31:1];
+			`LM32_CSR_TLBPADDR: if (~csr_write_data[0]) itlb_update_paddr_csr_reg[31:1] <= csr_write_data[31:1];
 			endcase
 		end
 		itlb_update_vaddr_csr_reg[0] <= 0;
@@ -373,7 +373,7 @@ begin
 			end
 			if (csr_write_enable && ~csr_write_data[0])
 			begin
-				if (csr == `LM32_CSR_TLB_PADDRESS /*&& (kernel_mode_reg == `LM32_KERNEL_MODE)*/)
+				if (csr == `LM32_CSR_TLBPADDR /*&& (kernel_mode_reg == `LM32_KERNEL_MODE)*/)
 				begin
 					//$display("[%t] ITLB WCSR to PADDR with csr_write_data == 0x%08X", $time, csr_write_data);
 `ifdef CFG_VERBOSE_DISPLAY_ENABLED
@@ -382,7 +382,7 @@ begin
 					itlb_updating <= 1;
 				end
 				// FIXME : test for kernel mode is removed for testing purposes ONLY
-				else if (csr == `LM32_CSR_TLB_VADDRESS /*&& (kernel_mode_reg == `LM32_KERNEL_MODE)*/)
+				else if (csr == `LM32_CSR_TLBVADDR /*&& (kernel_mode_reg == `LM32_KERNEL_MODE)*/)
 				begin
 `ifdef CFG_VERBOSE_DISPLAY_ENABLED
 					$display("ITLB WCSR at %t with csr_write_data == 0x%08X", $time, csr_write_data);
