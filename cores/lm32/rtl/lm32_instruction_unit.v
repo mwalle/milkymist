@@ -415,7 +415,6 @@ reg alternate_eba_taken;
 
 `ifdef CFG_MMU_ENABLED
 wire [`LM32_PC_RNG] physical_pc_f;
-wire kernel_mode;
 `endif
 
 /////////////////////////////////////////////////////
@@ -503,7 +502,6 @@ lm32_itlb itlb (
     // ----- Outputs -----
     .physical_pc_f          (physical_pc_f),
     .itlb_miss_int          (itlb_miss),
-    .kernel_mode            (kernel_mode),
     .csr_read_data          (csr_read_data)
     );
 `endif

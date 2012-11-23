@@ -3,15 +3,10 @@
 `ifdef CFG_MMU_ENABLED
 `define LM32_ITLB_CTRL_FLUSH                5'h1
 `define LM32_ITLB_CTRL_UPDATE               5'h2
-`define LM32_TLB_CTRL_SWITCH_TO_KERNEL_MODE	5'h4
-`define LM32_TLB_CTRL_SWITCH_TO_USER_MODE   5'h8
 `define LM32_TLB_CTRL_INVALIDATE_ENTRY      5'h10
 
 `define LM32_TLB_STATE_CHECK             2'b01
 `define LM32_TLB_STATE_FLUSH             2'b10
-
-`define LM32_KERNEL_MODE                 1
-`define LM32_USER_MODE                   0
 
 /////////////////////////////////////////////////////
 // Module interface
@@ -42,7 +37,6 @@ module lm32_itlb (
     // ----- Outputs -------
     physical_pc_f,
     itlb_miss_int,
-    kernel_mode,
     csr_read_data
     );
 
@@ -118,8 +112,6 @@ input q_x;
 output [`LM32_WORD_RNG] csr_read_data;
 wire   [`LM32_WORD_RNG] csr_read_data;
 
-output kernel_mode;
-wire   kernel_mode;
 output itlb_miss_int;
 wire   itlb_miss_int;
 output [`LM32_PC_RNG] physical_pc_f;
@@ -135,9 +127,6 @@ wire itlb_data_read_port_enable;
 wire itlb_write_port_enable;
 wire [vpfn_width + addr_itlb_tag_width + 1 - 1:0] itlb_write_data; // +1 is for valid_bit
 wire [vpfn_width + addr_itlb_tag_width + 1 - 1:0] itlb_read_data; // +1 is for valid_bit
-reg kernel_mode_reg = `LM32_KERNEL_MODE;
-wire switch_to_kernel_mode;
-wire switch_to_user_mode;
 reg [`LM32_WORD_RNG] itlb_update_vaddr_csr_reg = `LM32_WORD_WIDTH'd0;
 reg [`LM32_WORD_RNG] itlb_update_paddr_csr_reg = `LM32_WORD_WIDTH'd0;
 reg [1:0] itlb_state;
@@ -150,8 +139,6 @@ reg itlb_miss_q = `FALSE;
 reg [`LM32_PC_RNG] itlb_miss_addr;
 wire itlb_data_valid;
 wire [`LM32_ITLB_LOOKUP_RANGE] itlb_lookup;
-reg go_to_user_mode;
-reg go_to_user_mode_2;
 reg itlb_enabled;
 
 /////////////////////////////////////////////////////
@@ -205,8 +192,6 @@ assign itlb_write_data = (itlb_flushing == `TRUE)
 			 ? {`FALSE, {addr_itlb_tag_width{1'b0}}, {vpfn_width{1'b0}}}
 			 : {`TRUE, {itlb_update_vaddr_csr_reg[`LM32_ITLB_ADDR_TAG_RNG]}, itlb_update_paddr_csr_reg[`LM32_ITLB_ADDRESS_PFN_RNG]};
 
-assign kernel_mode = kernel_mode_reg;
-
 assign csr_read_data = {itlb_miss_addr, 2'b0};
 assign itlb_miss = (itlb_enabled == `TRUE) && (read_enable_f) && ~(itlb_data_valid) && (~itlb_miss_q);
 assign itlb_miss_int = (itlb_miss || itlb_miss_q);
@@ -227,35 +212,6 @@ begin
 	end
 end
 `endif
-
-always @(posedge clk_i `CFG_RESET_SENSITIVITY)
-begin
-	if (rst_i == `TRUE)
-		go_to_user_mode <= `FALSE;
-	else
-		go_to_user_mode <= (eret_q_x || switch_to_user_mode);
-end
-
-always @(posedge clk_i `CFG_RESET_SENSITIVITY)
-begin
-	if (rst_i == `TRUE)
-		go_to_user_mode_2 <= `FALSE;
-	else
-		go_to_user_mode_2 <= go_to_user_mode;
-end
-
-always @(posedge clk_i `CFG_RESET_SENSITIVITY)
-begin
-	if (rst_i == `TRUE)
-		kernel_mode_reg <= `LM32_KERNEL_MODE;
-	else
-	begin
-		if (exception_x || switch_to_kernel_mode)
-			kernel_mode_reg <= `LM32_KERNEL_MODE;
-		else if (go_to_user_mode_2)
-			kernel_mode_reg <= `LM32_USER_MODE;
-	end
-end
 
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
@@ -373,7 +329,7 @@ begin
 			end
 			if (csr_write_enable && ~csr_write_data[0])
 			begin
-				if (csr == `LM32_CSR_TLBPADDR /*&& (kernel_mode_reg == `LM32_KERNEL_MODE)*/)
+				if (csr == `LM32_CSR_TLBPADDR)
 				begin
 					//$display("[%t] ITLB WCSR to PADDR with csr_write_data == 0x%08X", $time, csr_write_data);
 `ifdef CFG_VERBOSE_DISPLAY_ENABLED
@@ -381,8 +337,7 @@ begin
 `endif
 					itlb_updating <= 1;
 				end
-				// FIXME : test for kernel mode is removed for testing purposes ONLY
-				else if (csr == `LM32_CSR_TLBVADDR /*&& (kernel_mode_reg == `LM32_KERNEL_MODE)*/)
+				else if (csr == `LM32_CSR_TLBVADDR)
 				begin
 `ifdef CFG_VERBOSE_DISPLAY_ENABLED
 					$display("ITLB WCSR at %t with csr_write_data == 0x%08X", $time, csr_write_data);
