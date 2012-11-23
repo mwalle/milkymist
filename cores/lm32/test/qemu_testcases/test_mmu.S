@@ -58,6 +58,17 @@ test_name MMU_DTLB_FLUSH
     calli disable_dtlb
     check_excp 128
 
+# expects empty DTLB
+test_name MMU_DTLB_UPDATE_1
+    calli enable_dtlb
+    ori r10, r1, 1
+    ori r11, r2, 1
+    wcsr TLBVADDR, r10
+    wcsr TLBPADDR, r11       # TLB entry setup
+    lw r3, (r1+0)            # .. directly followed by a load
+    calli disable_dtlb
+    check_r3 0xdeadbabe
+
 test_name MMU_DTLB_INV
     mvhi r1, hi(data2)
     ori r1, r1, lo(data2)
