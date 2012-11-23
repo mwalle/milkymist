@@ -112,16 +112,16 @@ wire   stall_request;
 wire [`LM32_DTLB_ADDR_RNG] read_address;
 wire [`LM32_DTLB_ADDR_RNG] write_address;
 wire [`LM32_DTLB_DATA_RNG] write_data; // +1 is for valid_bit
-wire [`LM32_DTLB_TAG_RNG] pte_tag_x;
-wire [`LM32_DTLB_VPFN_RNG] pte_pfn_x;
-wire pte_valid_x;
+wire [`LM32_DTLB_TAG_RNG] tlbe_tag_x;
+wire [`LM32_DTLB_VPFN_RNG] tlbe_pfn_x;
+wire tlbe_valid_x;
 wire checking;
 wire flushing;
 wire write_port_enable;
 
 reg [`LM32_DTLB_STATE_RNG] state;                         // Current state of FSM
 reg [`LM32_DTLB_ADDR_RNG] flush_set;
-reg [`LM32_DTLB_VPFN_RNG] pte_pfn_m;
+reg [`LM32_DTLB_VPFN_RNG] tlbe_pfn_m;
 reg lookup;
 
 
@@ -152,7 +152,7 @@ lm32_ram
      .write_enable (write_port_enable),
      .write_data (write_data),
      // ----- Outputs -------
-     .read_data ({pte_pfn_x, pte_tag_x, pte_valid_x})
+     .read_data ({tlbe_pfn_x, tlbe_tag_x, tlbe_valid_x})
      );
 
 /////////////////////////////////////////////////////
@@ -171,15 +171,15 @@ assign write_port_enable = (update == `TRUE) || (invalidate == `TRUE) || (flushi
 
 assign physical_load_store_address_m = (enable == `FALSE)
                 ? address_m
-                : {pte_pfn_m, address_m[`LM32_DTLB_OFFSET_RNG]};
+                : {tlbe_pfn_m, address_m[`LM32_DTLB_OFFSET_RNG]};
 
 assign write_data = ((invalidate == `TRUE) || (flushing))
              ? {{`LM32_DTLB_DATA_WIDTH-1{1'b0}}, `FALSE}
              : {tlbpaddr[`LM32_DTLB_VPFN_RNG], tlbvaddr[`LM32_DTLB_TAG_RNG], `TRUE};
 
-assign pte_match = ({pte_tag_x, pte_valid_x} == {address_x[`LM32_DTLB_TAG_RNG], `TRUE});
+assign tlbe_match = ({tlbe_tag_x, tlbe_valid_x} == {address_x[`LM32_DTLB_TAG_RNG], `TRUE});
 
-assign miss = ((enable == `TRUE) && ((load_q_x == `TRUE) || (store_q_x == `TRUE)) && (pte_match == `FALSE) && (lookup == `FALSE));
+assign miss = ((enable == `TRUE) && ((load_q_x == `TRUE) || (store_q_x == `TRUE)) && (tlbe_match == `FALSE) && (lookup == `FALSE));
 
 assign checking = state[0];
 assign flushing = state[1];
@@ -207,9 +207,9 @@ end
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)
 begin
     if (rst_i == `TRUE)
-        pte_pfn_m <= {vpfn_width{1'bx}};
+        tlbe_pfn_m <= {vpfn_width{1'bx}};
     else if (stall_m == `FALSE)
-        pte_pfn_m <= pte_pfn_x;
+        tlbe_pfn_m <= tlbe_pfn_x;
 end
 
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)
