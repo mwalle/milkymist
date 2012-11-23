@@ -807,8 +807,11 @@ reg dtlb_update;
 reg [`LM32_WORD_RNG] tlbpaddr;
 reg [`LM32_WORD_RNG] tlbvaddr;
 wire dtlb_stall_request;                        // Stall pipeline because data TLB is busy
+wire itlb_stall_request;                        // Stall pipeline because instruction TLB is busy
 wire dtlb_miss_exception;
 wire itlb_miss_exception;
+wire dtlb_miss_x;
+wire itlb_miss_x;
 reg itlbe;
 reg dtlbe;
 reg usr;
@@ -862,9 +865,6 @@ lm32_instruction_unit #(
     .branch_target_x        (branch_target_x),
 `endif
     .exception_m            (exception_m),
-`ifdef CFG_MMU_ENABLED
-    .exception_x            (exception_x),
-`endif
     .branch_taken_m         (branch_taken_m),
     .branch_mispredict_taken_m (branch_mispredict_taken_m),
     .branch_target_m        (branch_target_m),
@@ -882,13 +882,12 @@ lm32_instruction_unit #(
     .dcache_refilling       (dcache_refilling),
 `endif
 `ifdef CFG_MMU_ENABLED
-    .csr                    (csr_x),
-    .csr_write_data         (operand_1_x),
-    .csr_write_enable       (csr_write_enable_q_x),
-    .itlbe                  (itlbe),
-    .eitlbe                 (eitlbe),
-    .eret_q_x               (eret_q_x),
-    .q_x                    (q_x),
+    .itlb_enable            (itlbe),
+    .tlbpaddr               (tlbpaddr),
+    .tlbvaddr               (tlbvaddr),
+    .itlb_update            (itlb_update),
+    .itlb_flush             (itlb_flush),
+    .itlb_invalidate        (itlb_invalidate),
 `endif
 `ifdef CFG_IWB_ENABLED
     // From Wishbone
@@ -922,7 +921,8 @@ lm32_instruction_unit #(
     .irom_data_m            (irom_data_m),
 `endif
 `ifdef CFG_MMU_ENABLED
-    .itlb_miss		    (itlb_miss_exception),
+    .itlb_stall_request     (itlb_stall_request),
+    .itlb_miss_x            (itlb_miss_x),
 `endif
 `ifdef CFG_IWB_ENABLED
     // To Wishbone
@@ -1100,7 +1100,7 @@ lm32_load_store_unit #(
     .stall_wb_load          (stall_wb_load),
 `ifdef CFG_MMU_ENABLED
     .dtlb_stall_request     (dtlb_stall_request),
-    .dtlb_miss              (dtlb_miss_exception),
+    .dtlb_miss              (dtlb_miss_x),
 `endif
     // To Wishbone
     .d_dat_o                (D_DAT_O),
@@ -1744,6 +1744,9 @@ assign kill_f =    (   (valid_d == `TRUE)
 `ifdef CFG_DCACHE_ENABLED
                 || (dcache_refill_request == `TRUE)
 `endif
+`ifdef CFG_MMU_ENABLED
+                || (itlb_miss_exception == `TRUE)
+`endif
                 ;
 assign kill_d =    (branch_taken_m == `TRUE)
 `ifdef CFG_FAST_UNCONDITIONAL_BRANCH
@@ -1754,6 +1757,9 @@ assign kill_d =    (branch_taken_m == `TRUE)
 `endif
 `ifdef CFG_DCACHE_ENABLED
                 || (dcache_refill_request == `TRUE)
+`endif
+`ifdef CFG_MMU_ENABLED
+                || (itlb_miss_exception == `TRUE)
 `endif
                 ;
 assign kill_x =    (branch_flushX_m == `TRUE)
@@ -1810,6 +1816,17 @@ assign system_call_exception = (   (scall_x == `TRUE)
 `endif
 			       );
 
+`ifdef CFG_MMU_ENABLED
+assign itlb_miss_exception = (   (itlb_miss_x == `TRUE)
+                              && (itlbe == `TRUE)
+                              && (valid_x == `TRUE)
+			     );
+assign dtlb_miss_exception = (   (dtlb_miss_x == `TRUE)
+                              && (dtlbe == `TRUE)
+                              && (valid_x == `TRUE)
+			     );
+`endif
+
 `ifdef CFG_DEBUG_ENABLED
 assign debug_exception_x =  (breakpoint_exception == `TRUE)
                          || (watchpoint_exception == `TRUE)
@@ -1838,7 +1855,8 @@ assign non_debug_exception_x = (system_call_exception == `TRUE)
                                )
 `endif
 `ifdef CFG_MMU_ENABLED
-			|| (dtlb_miss_exception == `TRUE || itlb_miss_exception == `TRUE)
+                            || (dtlb_miss_exception == `TRUE)
+                            || (itlb_miss_exception == `TRUE)
 `endif
                             ;
 
@@ -1864,7 +1882,8 @@ assign exception_x =           (system_call_exception == `TRUE)
                                )
 `endif
 `ifdef CFG_MMU_ENABLED
-			|| (dtlb_miss_exception == `TRUE || itlb_miss_exception == `TRUE)
+                            || (dtlb_miss_exception == `TRUE)
+                            || (itlb_miss_exception == `TRUE)
 `endif
                             ;
 `endif
@@ -1928,7 +1947,15 @@ end
 
 assign stall_a = (stall_f == `TRUE);
 
-assign stall_f = (stall_d == `TRUE);
+assign stall_f =   (stall_d == `TRUE)
+`ifdef CFG_MMU_ENABLED
+                || (   (itlbe == `TRUE)
+                    && (   (debug_exception_q_w == `TRUE)
+                        || (non_debug_exception_q_w == `TRUE)
+                       )
+                   )
+`endif
+                ;
 
 assign stall_d =   (stall_x == `TRUE)
                 || (   (interlock == `TRUE)
@@ -2014,6 +2041,7 @@ assign stall_m =    (stall_wb_load == `TRUE)
                  || (dcache_stall_request == `TRUE)     // Need to stall in case a taken branch is in M stage and data cache is only being flush, so wont be restarted
 `endif
 `ifdef CFG_MMU_ENABLED
+                 || (itlb_stall_request == `TRUE)       // ITLB is busy
                  || (dtlb_stall_request == `TRUE)       // DTLB is busy or a lookup is in progress
 `endif
 `ifdef CFG_ICACHE_ENABLED
@@ -2362,26 +2390,29 @@ begin
         itlb_invalidate <= `FALSE;
         dtlb_flush <= `FALSE;
         dtlb_invalidate <= `FALSE;
-        if (dtlb_miss_exception == `TRUE)
-            tlbvaddr <= adder_result_x;
-        else if (itlb_miss_exception == `TRUE)
-            tlbvaddr <= {pc_x, {`LM32_WORD_WIDTH-`LM32_PC_WIDTH{1'b0}}};
-        else if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBVADDR) && (stall_x == `FALSE))
+        if (stall_x == `FALSE)
         begin
-            tlbvaddr <= operand_1_x;
-            if (operand_1_x[0] == 1'b0)
+            if ((stall_x == `FALSE) && (dtlb_miss_exception == `TRUE))
+                tlbvaddr <= adder_result_x;
+            else if (itlb_miss_exception == `TRUE)
+                tlbvaddr <= {pc_x, {`LM32_WORD_WIDTH-`LM32_PC_WIDTH{1'b0}}};
+            else if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBVADDR))
             begin
-                case (operand_1_x[`LM32_TLB_OP_RNG])
-                `LM32_TLB_OP_FLUSH:      itlb_flush <= `TRUE;
-                `LM32_TLB_OP_INVALIDATE: itlb_invalidate <= `TRUE;
-                endcase
-            end
-            if (operand_1_x[0] == 1'b1)
-            begin
-                case (operand_1_x[`LM32_TLB_OP_RNG])
-                `LM32_TLB_OP_FLUSH:      dtlb_flush <= `TRUE;
-                `LM32_TLB_OP_INVALIDATE: dtlb_invalidate <= `TRUE;
-                endcase
+                tlbvaddr <= operand_1_x;
+                if (operand_1_x[0] == 1'b0)
+                begin
+                    case (operand_1_x[`LM32_TLB_OP_RNG])
+                    `LM32_TLB_OP_FLUSH:      itlb_flush <= `TRUE;
+                    `LM32_TLB_OP_INVALIDATE: itlb_invalidate <= `TRUE;
+                    endcase
+                end
+                if (operand_1_x[0] == 1'b1)
+                begin
+                    case (operand_1_x[`LM32_TLB_OP_RNG])
+                    `LM32_TLB_OP_FLUSH:      dtlb_flush <= `TRUE;
+                    `LM32_TLB_OP_INVALIDATE: dtlb_invalidate <= `TRUE;
+                    endcase
+                end
             end
         end
     end
@@ -2402,7 +2433,7 @@ begin
         dtlb_update <= `FALSE;
         if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBPADDR) && (stall_x == `FALSE))
         begin
-			/* updates take change in the M stage */
+            /* updates take change in the M stage */
             tlbpaddr <= operand_1_x;
             if (operand_1_x[0] == 1'b0)
                 itlb_update <= `TRUE;
@@ -2699,6 +2730,7 @@ begin
     end
     else
     begin
+
         // D/X stage registers
 
         if (stall_x == `FALSE)

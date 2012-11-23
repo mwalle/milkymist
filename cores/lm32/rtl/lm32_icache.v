@@ -93,7 +93,6 @@ module lm32_icache (
     read_enable_f,
 `ifdef CFG_MMU_ENABLED
     physical_address_f,
-    itlb_miss,
 `endif
     refill_ready,
     refill_data,
@@ -108,6 +107,9 @@ module lm32_icache (
     restart_request,
     refill_request,
     refill_address,
+`ifdef CFG_MMU_ENABLED
+    physical_refill_address,
+`endif
     refilling,
     inst
     );
@@ -155,7 +157,6 @@ input read_enable_f;                                // Indicates if cache access
 
 `ifdef CFG_MMU_ENABLED
 input [`LM32_PC_RNG] physical_address_f;            // Physical address of instruction in F stage
-input itlb_miss;                                    // No ITLB entry found
 `endif
 
 input refill_ready;                                 // Next word of refill data is ready
@@ -176,6 +177,10 @@ output restart_request;                             // Request to restart instru
 reg    restart_request;
 output refill_request;                              // Request to refill a cache line
 wire   refill_request;
+`ifdef CFG_MMU_ENABLED
+output [`LM32_PC_RNG] physical_refill_address;      // Physical base address of cache refill
+reg    [`LM32_PC_RNG] physical_refill_address;
+`endif
 output [`LM32_PC_RNG] refill_address;               // Base address of cache refill
 reg    [`LM32_PC_RNG] refill_address;
 output refilling;                                   // Indicates the instruction cache is currently refilling
@@ -349,7 +354,7 @@ endgenerate
 
 // On the last refill cycle set the valid bit, for all other writes it should be cleared
 assign tmem_write_data[`LM32_IC_TAGS_VALID_RNG] = last_refill & !flushing;
-assign tmem_write_data[`LM32_IC_TAGS_TAG_RNG] = refill_address[`LM32_IC_ADDR_TAG_RNG];
+assign tmem_write_data[`LM32_IC_TAGS_TAG_RNG] = physical_refill_address[`LM32_IC_ADDR_TAG_RNG];
 
 // Signals that indicate which state we are in
 assign flushing = |state[1:0];
@@ -434,20 +439,18 @@ begin
             if (iflush == `TRUE)
             begin
 `ifdef CFG_MMU_ENABLED
-                refill_address <= physical_address_f;
+                physical_refill_address <= physical_address_f;
+                refill_address <= address_f;
 `else
                 refill_address <= address_f;
 `endif
                 state <= `LM32_IC_STATE_FLUSH;
             end
-`ifdef CFG_MMU_ENABLED
-            else if (miss == `TRUE && itlb_miss == `FALSE)
-`else
             else if (miss == `TRUE)
-`endif
             begin
 `ifdef CFG_MMU_ENABLED
-                refill_address <= physical_address_f;
+                physical_refill_address <= physical_address_f;
+                refill_address <= address_f;
 `else
                 refill_address <= address_f;
 `endif
