@@ -51,15 +51,8 @@ test_name MMU_DTLB_MISS_6
     lw r3, (r2+4)
 	check_r3 0x1234
 
-test_name MMU_DTLB_FLUSH
-    calli enable_dtlb
-    calli flush_dtlb
-    lw r3, (r1+0)
-    calli disable_dtlb
-    check_excp 128
-
-# expects empty DTLB
 test_name MMU_DTLB_UPDATE_1
+    calli flush_dtlb
     calli enable_dtlb
     ori r10, r1, 1
     ori r11, r2, 1
@@ -70,13 +63,20 @@ test_name MMU_DTLB_UPDATE_1
     check_r3 0xdeadbabe
 
 test_name MMU_DTLB_UPDATE_2
-    calli invalidate_dtlb
+    calli flush_dtlb
     calli enable_dtlb
     ori r10, r1, 1
     ori r11, r2, 1
     wcsr TLBVADDR, r10
     lw r3, (r1+0)            # A load
     wcsr TLBPADDR, r11       # .. directly followed an TLB update
+    calli disable_dtlb
+    check_excp 128
+
+test_name MMU_DTLB_FLUSH
+    calli enable_dtlb
+    calli flush_dtlb
+    lw r3, (r1+0)
     calli disable_dtlb
     check_excp 128
 
