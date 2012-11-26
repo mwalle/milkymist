@@ -123,7 +123,11 @@ localparam addr_offset_lsb = 2;
 localparam addr_offset_msb = (addr_offset_lsb+addr_offset_width-1);
 localparam addr_set_lsb = (addr_offset_msb+1);
 localparam addr_set_msb = (addr_set_lsb+addr_set_width-1);
+`ifdef CFG_MMU_ENABLED
+localparam addr_tag_lsb = (addr_offset_msb+1);
+`else
 localparam addr_tag_lsb = (addr_set_msb+1);
+`endif
 localparam addr_tag_msb = `CLOG2(`CFG_DCACHE_LIMIT-`CFG_DCACHE_BASE_ADDRESS);
 localparam addr_tag_width = (addr_tag_msb-addr_tag_lsb+1);
 
