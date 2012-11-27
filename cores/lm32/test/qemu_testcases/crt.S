@@ -1,3 +1,4 @@
+.include "macros.inc"
 .text
 .global _start
 
@@ -82,11 +83,21 @@ _system_call_handler:
 	nop
 	nop
 
-_tlb_miss_handler:
+_dtlb_miss_handler:
 	rcsr r24, TLBVADDR
 	ori r25, r25, 128
 	addi ra, ea, 4
 	ret
+	nop
+	nop
+	nop
+	nop
+
+_itlb_miss_handler:
+	rcsr r24, TLBVADDR
+	ori r25, r25, 256
+	ret
+	nop
 	nop
 	nop
 	nop

@@ -41,7 +41,7 @@ test_name MMU_DTLB_MISS_4
 
 test_name MMU_DTLB_MISS_5
     calli enable_dtlb
-	mvi r3, 0x1234
+    mvi r3, 0x1234
     sw (r1+4), r3
     lw r3, (r1+0x1004)
     calli disable_dtlb
@@ -49,7 +49,7 @@ test_name MMU_DTLB_MISS_5
 
 test_name MMU_DTLB_MISS_6
     lw r3, (r2+4)
-	check_r3 0x1234
+    check_r3 0x1234
 
 test_name MMU_DTLB_UPDATE_1
     calli flush_dtlb
@@ -93,8 +93,6 @@ test_name MMU_DTLB_INV
     calli disable_dtlb
     check_excp 128
 
-end
-
 # make sure we have a mapping for the current code
 mvhi r1, hi(initial_page)
 ori r1, r1, lo(initial_page)
@@ -115,6 +113,28 @@ test_name MMU_ITLB_ON
     calli enable_itlb
     calli code2
     check_r3 0xaa
+
+test_name MMU_ITLB_MISS_1
+    calli enable_itlb
+    calli code2+0x1004
+    check_excp 256
+
+test_name MMU_ITLB_MISS_2
+    check_reg ea code2+0x1004
+
+test_name MMU_ITLB_MISS_3
+    check_reg r24 code2+0x1004
+
+test_name MMU_ITLB_MISS_4
+    wcsr DCC, r0
+    nop
+    nop
+    nop
+    calli enable_itlb
+    lw r1, (r0+0)
+    calli code2+0x1004
+    check_excp 256
+
 end
 
 enable_itlb:
@@ -187,6 +207,8 @@ code1:
     andi r10, r10, 0xfff7
     wcsr PSW, r10
     nop
+    nop
+    nop
     ret
 
 .align 0x1000
@@ -196,6 +218,8 @@ code2:
     rcsr r10, PSW
     andi r10, r10, 0xfff7
     wcsr PSW, r10
+    nop
+    nop
     nop
     ret
 
