@@ -1,3 +1,33 @@
+//   ==================================================================
+//   >>>>>>>>>>>>>>>>>>>>>>> COPYRIGHT NOTICE <<<<<<<<<<<<<<<<<<<<<<<<<
+//   ------------------------------------------------------------------
+//   Copyright (c) 2011-2012 Yann Sionneau <yann.sionneau@gmail.com>
+//   Copyright (c) 2012 Michael Walle <michael@walle.cc>
+//   ALL RIGHTS RESERVED
+//   ------------------------------------------------------------------
+//
+//   Permission:
+//
+//      The authors grants permission to use this code pursuant to the
+//      terms of the Lattice Semiconductor Corporation Open Source License
+//      Agreement.
+//
+//   Disclaimer:
+//
+//      The authors provides no warranty regarding the use or functionality
+//      of this code. It is the user's responsibility to verify the user's
+//      design for consistency and functionality through the use of formal
+//      verification methods.
+//
+//   --------------------------------------------------------------------
+//                         FILE DETAILS
+// Project          : LatticeMico32
+// File             : lm32_itlb.v
+// Title            : Instruction Translation Lookaside Buffer
+// Dependencies     : lm32_include.v
+//
+// =============================================================================
+
 `include "lm32_include.v"
 
 `ifdef CFG_MMU_ENABLED
