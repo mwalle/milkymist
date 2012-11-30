@@ -1955,6 +1955,10 @@ assign stall_a = (stall_f == `TRUE);
 
 assign stall_f =   (stall_d == `TRUE)
 `ifdef CFG_MMU_ENABLED
+                // We need to stall for one cycle. Otherwise the icache
+                // starts one cycle earlier and the restart address will be
+                // wrong in case of a miss, that is one instruction is
+                // skipped.
                 || (   (itlbe == `TRUE)
                     && (   (debug_exception_q_w == `TRUE)
                         || (non_debug_exception_q_w == `TRUE)
