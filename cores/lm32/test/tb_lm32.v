@@ -129,6 +129,12 @@ assign pmem_adr = i_adr[15:2];
 task dump_processor_state;
 begin
 	$display("Processor state:");
+	$display("  PSW=%08x", lm32.cpu.csr_psw_read_data_x);
+	$display("  IE=%08x IP=%08x IM=%08x",
+		lm32.cpu.interrupt_unit.ie,
+		lm32.cpu.interrupt_unit.ip,
+		lm32.cpu.interrupt_unit.im
+	);
 	for(i=0; i<32; i=i+1) begin
 		if(i%4 == 0)
 			$write("  ");

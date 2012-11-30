@@ -72,6 +72,18 @@ _\name:
 992:
 .endm
 
+.macro check_csr csr val
+	mvhi r13, hi(\val)
+	ori r13, r13, lo(\val)
+    rcsr r14, \csr
+	be r13, r14, 991f
+	tc_fail
+	bi 992f
+991:
+	tc_pass
+992:
+.endm
+
 .macro start
 	.global _main
 	.text

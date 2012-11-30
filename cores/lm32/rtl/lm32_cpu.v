@@ -503,6 +503,9 @@ reg bret_w;
 wire csr_write_enable_d;                        // CSR write enable
 reg csr_write_enable_x;
 wire csr_write_enable_q_x;
+`ifdef CFG_MMU_ENABLED
+wire csr_write_enable_u_q_x;
+`endif
 `ifdef CFG_USER_ENABLED
 wire [`LM32_USER_OPCODE_RNG] user_opcode_d;     // User-defined instruction opcode
 `endif
@@ -622,6 +625,9 @@ wire [`LM32_WORD_RNG] interrupt_csr_read_data_x;// Data read from interrupt CSRs
 `endif
 wire [`LM32_WORD_RNG] cfg;                      // Configuration CSR
 wire [`LM32_WORD_RNG] cfg2;                     // Extended Configuration CSR
+`ifdef CFG_MMU_ENABLED
+wire [`LM32_WORD_RNG] csr_psw_read_data_x;      // Processor Status Word CSR
+`endif
 `ifdef CFG_CYCLE_COUNTER_ENABLED
 reg [`LM32_WORD_RNG] cc;                        // Cycle counter CSR
 `endif
@@ -1222,7 +1228,7 @@ lm32_interrupt interrupt_unit (
 `endif
     .csr                    (csr_x),
     .csr_write_data         (operand_1_x),
-    .csr_write_enable       (csr_write_enable_q_x),
+    .csr_write_enable       (csr_write_enable_u_q_x),
     // ----- Outputs -------
     .interrupt_exception    (interrupt_exception),
     // To pipeline
@@ -1245,7 +1251,7 @@ lm32_jtag jtag (
 `ifdef CFG_JTAG_UART_ENABLED
     .csr                    (csr_x),
     .csr_write_data         (operand_1_x),
-    .csr_write_enable       (csr_write_enable_q_x),
+    .csr_write_enable       (csr_write_enable_u_q_x),
     .stall_x                (stall_x),
 `endif
 `ifdef CFG_HW_DEBUG_ENABLED
@@ -1293,7 +1299,7 @@ lm32_debug #(
     .load_x                 (load_x),
     .store_x                (store_x),
     .load_store_address_x   (adder_result_x),
-    .csr_write_enable_x     (csr_write_enable_q_x),
+    .csr_write_enable_x     (csr_write_enable_u_q_x),
     .csr_write_data         (operand_1_x),
     .csr_x                  (csr_x),
 `ifdef CFG_HW_DEBUG_ENABLED
@@ -2076,6 +2082,11 @@ assign modulus_q_d = (modulus_d == `TRUE) && (q_d == `TRUE);
 `endif
 assign q_x = (valid_x == `TRUE) && (kill_x == `FALSE);
 assign csr_write_enable_q_x = (csr_write_enable_x == `TRUE) && (q_x == `TRUE);
+assign csr_write_enable_u_q_x = (csr_write_enable_q_x == `TRUE)
+`ifdef CFG_MMU_ENABLED
+               && (usr == `FALSE)
+`endif
+                  ;
 assign eret_q_x = (eret_x == `TRUE) && (q_x == `TRUE);
 `ifdef CFG_DEBUG_ENABLED
 assign bret_q_x = (bret_x == `TRUE) && (q_x == `TRUE);
@@ -2309,6 +2320,8 @@ begin
             itlbe <= `FALSE;
             edtlbe <= dtlbe;
             dtlbe <= `FALSE;
+            eusr <= usr;
+            usr <= `FALSE;
         end
         else if (debug_exception_q_w == `TRUE)
         begin
@@ -2317,6 +2330,8 @@ begin
             itlbe <= `FALSE;
             bdtlbe <= dtlbe;
             dtlbe <= `FALSE;
+            busr <= usr;
+            usr <= `FALSE;
         end
 `else
         if (exception_q_w == `TRUE)
@@ -2326,6 +2341,8 @@ begin
             itlbe <= `FALSE;
             edtlbe <= dtlbe;
             dtlbe <= `FALSE;
+            eusr <= usr;
+            usr <= `FALSE;
         end
 `endif
         else if (stall_x == `FALSE)
@@ -2335,6 +2352,7 @@ begin
                 // Restore ITLB and DTLB enable
                 itlbe <= eitlbe;
                 dtlbe <= edtlbe;
+                usr <= eusr;
             end
 `ifdef CFG_DEBUG_ENABLED
             else if (bret_q_x == `TRUE)
@@ -2342,9 +2360,10 @@ begin
                 // Restore ITLB and DTLB enable
                 itlbe <= bitlbe;
                 dtlbe <= bdtlbe;
+                usr <= busr;
             end
 `endif
-            else if (csr_write_enable_q_x == `TRUE)
+            else if (csr_write_enable_u_q_x == `TRUE)
             begin
                 // Handle wcsr write
                 if (csr_x == `LM32_CSR_PSW)
@@ -2396,7 +2415,7 @@ begin
                 tlbvaddr <= adder_result_x;
             else if (itlb_miss_exception == `TRUE)
                 tlbvaddr <= {pc_x, {`LM32_WORD_WIDTH-`LM32_PC_WIDTH{1'b0}}};
-            else if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBVADDR))
+            else if ((csr_write_enable_u_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBVADDR))
             begin
                 tlbvaddr <= operand_1_x;
                 if (operand_1_x[0] == 1'b0)
@@ -2431,7 +2450,7 @@ begin
     begin
         itlb_update <= `FALSE;
         dtlb_update <= `FALSE;
-        if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBPADDR) && (stall_x == `FALSE))
+        if ((csr_write_enable_u_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBPADDR) && (stall_x == `FALSE))
         begin
             /* updates take change in the M stage */
             tlbpaddr <= operand_1_x;
@@ -2451,7 +2470,7 @@ begin
         eba <= eba_reset[`LM32_PC_WIDTH+2-1:8];
     else
     begin
-        if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_EBA) && (stall_x == `FALSE))
+        if ((csr_write_enable_u_q_x == `TRUE) && (csr_x == `LM32_CSR_EBA) && (stall_x == `FALSE))
             eba <= operand_1_x[`LM32_PC_WIDTH+2-1:8];
 `ifdef CFG_HW_DEBUG_ENABLED
         if ((jtag_csr_write_enable == `TRUE) && (jtag_csr == `LM32_CSR_EBA))
@@ -2468,7 +2487,7 @@ begin
         deba <= deba_reset[`LM32_PC_WIDTH+2-1:8];
     else
     begin
-        if ((csr_write_enable_q_x == `TRUE) && (csr_x == `LM32_CSR_DEBA) && (stall_x == `FALSE))
+        if ((csr_write_enable_u_q_x == `TRUE) && (csr_x == `LM32_CSR_DEBA) && (stall_x == `FALSE))
             deba <= operand_1_x[`LM32_PC_WIDTH+2-1:8];
 `ifdef CFG_HW_DEBUG_ENABLED
         if ((jtag_csr_write_enable == `TRUE) && (jtag_csr == `LM32_CSR_DEBA))

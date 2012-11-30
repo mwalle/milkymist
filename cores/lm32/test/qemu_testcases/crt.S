@@ -76,10 +76,11 @@ _interrupt_handler:
 _system_call_handler:
 	ori r25, r25, 64
 	addi ra, ea, 4
+	# clear eusr flag to exit user mode
+	rcsr r24, PSW
+	andi r24, r24, 0xfbff
+	wcsr PSW, r24
 	ret
-	nop
-	nop
-	nop
 	nop
 	nop
 

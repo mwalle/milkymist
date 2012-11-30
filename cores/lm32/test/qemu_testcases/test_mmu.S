@@ -157,6 +157,28 @@ test_name MMU_ITLB_EXCEPTION_1
     scall
     calli disable_itlb
     check_excp 64
+
+# reset PSW for user mode tests
+wcsr PSW, r0
+
+test_name MMU_USER_MODE_1
+    calli enable_user_mode
+    check_csr PSW 0x0200
+
+test_name MMU_USER_MODE_2
+    wcsr PSW, r0
+    check_csr PSW 0x0200
+
+test_name MMU_USER_MODE_3
+    mvhi r3, 0xdead
+    ori r3, r3, 0xbabe
+    wcsr IM, r3
+    check_csr IM 0x0
+
+test_name MMU_USER_MODE_4
+    calli disable_user_mode
+    check_csr PSW 0x0000
+
 end
 
 enable_itlb:
@@ -175,6 +197,21 @@ disable_itlb:
     nop
     nop
     nop
+    ret
+
+enable_user_mode:
+    rcsr r10, PSW
+    ori r10, r10, 0x200
+    wcsr PSW, r10
+    nop
+    nop
+    nop
+    ret
+
+disable_user_mode:
+    mv r10, ra
+    scall
+    mv ra, r10
     ret
 
 flush_itlb:
