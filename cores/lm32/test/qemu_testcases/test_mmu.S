@@ -3,6 +3,11 @@
 initial_page:
 start
 
+# The following placeholder will be replaced by a variable count of NOPs.
+# The idea is to move the code around, so that a restart due to a
+# instruction cache miss will be at different places.
+##NOPS##
+
 mvhi r1, hi(data2)
 ori r1, r1, lo(data2)
 mvhi r2, hi(data1)

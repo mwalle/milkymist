@@ -77,8 +77,20 @@ CRT        = crt.o
 #TESTCASES += test_xori.elf
 
 TESTCASES += test_mmu.elf
+TESTCASES += test_mmu_nop1.elf
+TESTCASES += test_mmu_nop2.elf
+TESTCASES += test_mmu_nop3.elf
 
 all: build
+
+test_mmu_nop1.S: test_mmu.S
+	@sed 's|##NOPS##|nop|' $<  > $@
+
+test_mmu_nop2.S: test_mmu.S
+	@sed 's|##NOPS##|nop;nop|' $<  > $@
+
+test_mmu_nop3.S: test_mmu.S
+	@sed 's|##NOPS##|nop;nop;nop|' $<  > $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -100,5 +112,9 @@ check: $(TESTCASES:.elf=.vh)
 		vvp ../tb_lm32 +prog=$$case; \
 	done
 
+check_%: %.vh
+	@make -C .. tb_lm32
+	vvp ../tb_lm32 +prog=$<
+
 clean:
-	$(RM) -fr $(TESTCASES) $(TESTCASES:.elf=.vh) $(CRT) tb_lm32.vcd
+	$(RM) -fr $(TESTCASES) $(TESTCASES:.elf=.vh) $(CRT) *nop?.S tb_lm32.vcd
