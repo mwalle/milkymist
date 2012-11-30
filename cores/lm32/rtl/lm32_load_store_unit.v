@@ -77,7 +77,6 @@ module lm32_load_store_unit (
     kill_x,
     kill_m,
     exception_m,
-    exception_x,
     store_operand_x,
     load_store_address_x,
     load_store_address_m,
@@ -173,8 +172,6 @@ input stall_m;                                          // M stage stall
 input kill_x;                                           // Kill instruction in X stage
 input kill_m;                                           // Kill instruction in M stage
 input exception_m;                                      // An exception occured in the M stage
-input exception_x;                                      // An exception occured in the X stage
-input eret_q_x;
 
 `ifdef CFG_MMU_ENABLED
 input dtlb_enable;

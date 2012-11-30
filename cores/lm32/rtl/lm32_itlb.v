@@ -99,19 +99,19 @@ localparam vpfn_width = (vpfn_msb-vpfn_lsb+1);
 // Inputs
 /////////////////////////////////////////////////////
 
-input clk_i;                                        // Clock
-input rst_i;                                        // Reset
+input clk_i;                            // Clock
+input rst_i;                            // Reset
 
-input enable;                       // Instruction TLB enable
-input stall_a;                      // Stall instruction in A stage
-input stall_f;                      // Stall instruction in F stage
-input stall_d;                      // Stall instruction in D stage
-input stall_x;                      // Stall instruction in X stage
+input enable;                           // Instruction TLB enable
+input stall_a;                          // Stall instruction in A stage
+input stall_f;                          // Stall instruction in F stage
+input stall_d;                          // Stall instruction in D stage
+input stall_x;                          // Stall instruction in X stage
 
 input [`LM32_PC_RNG] pc_a;              // Address of instruction in A stage
 input [`LM32_PC_RNG] pc_f;              // Address of instruction in F stage
 
-input read_enable_f;                                // Indicates if cache access is valid
+input read_enable_f;                    // Indicates if cache access is valid
 
 input [`LM32_WORD_RNG] tlbpaddr;
 input [`LM32_WORD_RNG] tlbvaddr;

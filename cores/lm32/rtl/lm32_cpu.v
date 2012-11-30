@@ -1052,7 +1052,6 @@ lm32_load_store_unit #(
     .kill_x                 (kill_x),
     .kill_m                 (kill_m),
     .exception_m            (exception_m),
-    .exception_x            (exception_x),
     .store_operand_x        (store_operand_x),
     .load_store_address_x   (adder_result_x),
     .load_store_address_m   (operand_m),
@@ -1940,10 +1939,11 @@ begin
     else
 `endif
 `ifdef CFG_MMU_ENABLED
-	if (dtlb_miss_exception == `TRUE)
-		eid_x = `LM32_EID_DTLB_MISS;
-	else if (itlb_miss_exception == `TRUE)
-		eid_x = `LM32_EID_ITLB_MISS;
+         if (dtlb_miss_exception == `TRUE)
+        eid_x = `LM32_EID_DTLB_MISS;
+    else
+         if (itlb_miss_exception == `TRUE)
+        eid_x = `LM32_EID_ITLB_MISS;
 	else
 `endif
 		eid_x = `LM32_EID_SCALL;
@@ -2292,6 +2292,10 @@ begin
     endcase
 end
 
+/////////////////////////////////////////////////////
+// Sequential Logic
+/////////////////////////////////////////////////////
+
 `ifdef CFG_MMU_ENABLED
 // Processor status word (PSW) handling
 always @(posedge clk_i `CFG_RESET_SENSITIVITY)
@@ -2386,10 +2390,6 @@ begin
     end
 end
 `endif
-
-/////////////////////////////////////////////////////
-// Sequential Logic
-/////////////////////////////////////////////////////
 
 `ifdef CFG_MMU_ENABLED
 // TLBVADDR CSR
@@ -2517,7 +2517,7 @@ begin
     else
     begin
         // Set flag when bus error is detected
-        if (((D_ERR_I == `TRUE) && (D_CYC_O == `TRUE)))
+        if ((D_ERR_I == `TRUE) && (D_CYC_O == `TRUE))
             data_bus_error_seen <= `TRUE;
         // Clear flag when exception is taken
         if ((exception_m == `TRUE) && (kill_m == `FALSE))
@@ -2749,7 +2749,6 @@ begin
     end
     else
     begin
-
         // D/X stage registers
 
         if (stall_x == `FALSE)

@@ -99,25 +99,25 @@ localparam vpfn_width = (vpfn_msb-vpfn_lsb+1);
 // Inputs
 /////////////////////////////////////////////////////
 
-input clk_i;                                            // Clock
-input rst_i;                                            // Reset
+input clk_i;                            // Clock
+input rst_i;                            // Reset
 
-input enable;                                           // Data TLB enable
+input enable;                           // Data TLB enable
 
-input stall_x;                                          // Stall X stage
-input stall_m;                                          // Stall M stage
+input stall_x;                          // Stall X stage
+input stall_m;                          // Stall M stage
 
-input [`LM32_WORD_RNG] address_x;                       // X stage load/store address
-input [`LM32_WORD_RNG] address_m;                       // M stage load/store address
-input load_d;                                           // Load instruction in D stage
-input store_d;                                          // Store instruction in D stage
-input load_q_x;                                         // Load instruction in X stage
-input store_q_x;                                        // Store instruction in X stage
-input load_q_m;                                         // Load instruction in M stage
-input store_q_m;                                        // Store instruction in M stage
+input [`LM32_WORD_RNG] address_x;       // X stage load/store address
+input [`LM32_WORD_RNG] address_m;       // M stage load/store address
+input load_d;                           // Load instruction in D stage
+input store_d;                          // Store instruction in D stage
+input load_q_x;                         // Load instruction in X stage
+input store_q_x;                        // Store instruction in X stage
+input load_q_m;                         // Load instruction in M stage
+input store_q_m;                        // Store instruction in M stage
 
-input [`LM32_WORD_RNG] tlbvaddr;
 input [`LM32_WORD_RNG] tlbpaddr;
+input [`LM32_WORD_RNG] tlbvaddr;
 input update;
 input flush;
 input invalidate;
@@ -128,12 +128,10 @@ input invalidate;
 
 output [`LM32_WORD_RNG] physical_load_store_address_m;
 wire   [`LM32_WORD_RNG] physical_load_store_address_m;
-output [`LM32_WORD_RNG] csr_read_data;
-wire   [`LM32_WORD_RNG] csr_read_data;
-output miss;
-wire   miss;
 output stall_request;
 wire   stall_request;
+output miss;
+wire   miss;
 
 /////////////////////////////////////////////////////
 // Internal nets and registers
@@ -141,7 +139,7 @@ wire   stall_request;
 
 wire [`LM32_DTLB_ADDR_RNG] read_address;
 wire [`LM32_DTLB_ADDR_RNG] write_address;
-wire [`LM32_DTLB_DATA_RNG] write_data; // +1 is for valid_bit
+wire [`LM32_DTLB_DATA_RNG] write_data;
 wire [`LM32_DTLB_TAG_RNG] tlbe_tag_x;
 wire [`LM32_DTLB_VPFN_RNG] tlbe_pfn_x;
 wire tlbe_valid_x;
