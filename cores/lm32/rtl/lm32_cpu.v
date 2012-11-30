@@ -2195,7 +2195,12 @@ assign cfg = {
               };
 
 assign cfg2 = {
-		     30'b0,
+`ifdef CFG_MMU_ENABLED
+		     `TRUE,
+`else
+		     `FALSE,
+`endif
+		     29'b0,
 `ifdef CFG_IROM_ENABLED
 		     `TRUE,
 `else
