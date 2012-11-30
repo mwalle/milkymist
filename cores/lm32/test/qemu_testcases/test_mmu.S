@@ -106,10 +106,19 @@ ori r2, r2, lo(code1)
 calli update_itlb
 
 test_name MMU_ITLB_OFF
+    calli flush_icache
     calli code2
     check_r3 0x55
 
 test_name MMU_ITLB_ON
+    calli flush_icache
+    calli enable_itlb
+    calli code2
+    check_r3 0xaa
+
+test_name MMU_ITLB_CACHE_ALIAS
+    calli flush_icache
+    calli code2
     calli enable_itlb
     calli code2
     check_r3 0xaa
@@ -126,15 +135,23 @@ test_name MMU_ITLB_MISS_3
     check_reg r24 code2+0x1004
 
 test_name MMU_ITLB_MISS_4
-    wcsr DCC, r0
-    nop
-    nop
-    nop
+    calli flush_dcache
     calli enable_itlb
-    lw r1, (r0+0)
+    lw r1, (r0+0)            # provoke data cache restart request
     calli code2+0x1004
     check_excp 256
 
+test_name MMU_ITLB_MISS_5
+    calli flush_icache
+    calli enable_itlb
+    calli code2+0x1004      # provoke instruction cache restart request
+    check_excp 256
+
+test_name MMU_ITLB_EXCEPTION_1
+    calli enable_itlb
+    scall
+    calli disable_itlb
+    check_excp 64
 end
 
 enable_itlb:
@@ -197,6 +214,18 @@ update_dtlb:
 invalidate_dtlb:
     ori r10, r1, 5
     wcsr TLBVADDR, r10
+    ret
+
+flush_dcache:
+    wcsr DCC, r0
+    ret
+
+flush_icache:
+    wcsr ICC, r0
+    nop
+    nop
+    nop
+    nop
     ret
 
 .align 0x1000
