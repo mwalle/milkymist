@@ -264,16 +264,6 @@ begin
     end
 end
 
-`ifdef CFG_VERBOSE_DISPLAY_ENABLED
-always @(posedge clk_i)
-begin
-    if (write_port_enable)
-    begin
-        $display("[ITLB data : %d] Writing 0x%08X to 0x%08X", $time, write_data, write_address);
-    end
-end
-`endif
-
 endmodule
 
 `endif
