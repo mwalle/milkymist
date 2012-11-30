@@ -217,7 +217,7 @@ begin
     if (rst_i == `TRUE)
     begin
         flush_set <= {index_width{1'b1}};
-        state <= `LM32_TLB_STATE_FLUSH;
+        state <= `LM32_DTLB_STATE_FLUSH;
     end
     else
     begin

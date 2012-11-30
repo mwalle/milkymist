@@ -73,8 +73,6 @@
 `define LM32_DC_STATE_CHECK              3'b010
 `define LM32_DC_STATE_REFILL             3'b100
 
-`define LM32_TLB_STATE_FLUSH		 2'b10
-
 /////////////////////////////////////////////////////
 // Module interface
 /////////////////////////////////////////////////////
