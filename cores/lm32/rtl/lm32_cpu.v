@@ -815,8 +815,12 @@ reg [`LM32_WORD_RNG] tlbvaddr;
 wire dtlb_stall_request;                        // Stall pipeline because data TLB is busy
 wire itlb_stall_request;                        // Stall pipeline because instruction TLB is busy
 wire dtlb_miss_exception;
+wire dtlb_fault_exception;
+wire dtlb_exception;
 wire itlb_miss_exception;
+wire itlb_exception;
 wire dtlb_miss_x;
+wire dtlb_fault_x;
 wire itlb_miss_x;
 reg itlbe;
 reg dtlbe;
@@ -1106,6 +1110,7 @@ lm32_load_store_unit #(
 `ifdef CFG_MMU_ENABLED
     .dtlb_stall_request     (dtlb_stall_request),
     .dtlb_miss              (dtlb_miss_x),
+    .dtlb_fault             (dtlb_fault_x),
 `endif
     // To Wishbone
     .d_dat_o                (D_DAT_O),
@@ -1830,6 +1835,12 @@ assign dtlb_miss_exception = (   (dtlb_miss_x == `TRUE)
                               && (dtlbe == `TRUE)
                               && (valid_x == `TRUE)
 			     );
+assign dtlb_fault_exception = (   (dtlb_fault_x == `TRUE)
+                               && (dtlbe == `TRUE)
+                               && (valid_x == `TRUE)
+			     );
+assign itlb_exception = (itlb_miss_exception == `TRUE);
+assign dtlb_exception = (dtlb_miss_exception == `TRUE) || (dtlb_fault_exception == `TRUE);
 `endif
 
 `ifdef CFG_DEBUG_ENABLED
@@ -1860,8 +1871,8 @@ assign non_debug_exception_x = (system_call_exception == `TRUE)
                                )
 `endif
 `ifdef CFG_MMU_ENABLED
-                            || (dtlb_miss_exception == `TRUE)
-                            || (itlb_miss_exception == `TRUE)
+                            || (dtlb_exception == `TRUE)
+                            || (itlb_exception == `TRUE)
 `endif
                             ;
 
@@ -1887,8 +1898,8 @@ assign exception_x =           (system_call_exception == `TRUE)
                                )
 `endif
 `ifdef CFG_MMU_ENABLED
-                            || (dtlb_miss_exception == `TRUE)
-                            || (itlb_miss_exception == `TRUE)
+                            || (dtlb_exception == `TRUE)
+                            || (itlb_exception == `TRUE)
 `endif
                             ;
 `endif
@@ -1941,6 +1952,9 @@ begin
 `ifdef CFG_MMU_ENABLED
          if (dtlb_miss_exception == `TRUE)
         eid_x = `LM32_EID_DTLB_MISS;
+    else
+         if (dtlb_fault_exception == `TRUE)
+        eid_x = `LM32_EID_DTLB_FAULT;
     else
          if (itlb_miss_exception == `TRUE)
         eid_x = `LM32_EID_ITLB_MISS;
@@ -2420,9 +2434,9 @@ begin
         dtlb_invalidate <= `FALSE;
         if (stall_x == `FALSE)
         begin
-            if ((stall_x == `FALSE) && (dtlb_miss_exception == `TRUE))
+            if ((stall_x == `FALSE) && (dtlb_exception == `TRUE))
                 tlbvaddr <= adder_result_x;
-            else if (itlb_miss_exception == `TRUE)
+            else if (itlb_exception == `TRUE)
                 tlbvaddr <= {pc_x, {`LM32_WORD_WIDTH-`LM32_PC_WIDTH{1'b0}}};
             else if ((csr_write_enable_u_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBVADDR))
             begin

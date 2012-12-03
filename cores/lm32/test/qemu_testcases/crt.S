@@ -103,3 +103,13 @@ _itlb_miss_handler:
 	nop
 	nop
 	nop
+
+_dtlb_fault_handler:
+	ori r25, r25, 512
+	rcsr r24, TLBVADDR
+	addi ra, ea, 4
+	ret
+	nop
+	nop
+	nop
+	nop

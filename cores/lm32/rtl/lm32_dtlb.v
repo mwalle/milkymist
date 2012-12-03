@@ -41,7 +41,7 @@
 `define LM32_DTLB_VPFN_RNG                  vpfn_msb:vpfn_lsb
 `define LM32_DTLB_TAG_RNG                   tag_msb:tag_lsb
 `define LM32_DTLB_ADDR_RNG                  (index_width-1):0
-`define LM32_DTLB_DATA_WIDTH                (vpfn_width+tag_width+1)
+`define LM32_DTLB_DATA_WIDTH                (vpfn_width+tag_width+3)  // +3 for valid, ci, ro
 `define LM32_DTLB_DATA_RNG                  (`LM32_DTLB_DATA_WIDTH-1):0
 
 
@@ -72,7 +72,9 @@ module lm32_dtlb (
     // ----- Outputs -----
     physical_load_store_address_m,
     stall_request,
-    miss
+    miss,
+    cache_inhibit,
+    fault
     );
 
 /////////////////////////////////////////////////////
@@ -132,6 +134,10 @@ output stall_request;
 wire   stall_request;
 output miss;
 wire   miss;
+output cache_inhibit;
+wire   cache_inhibit;
+output fault;
+wire   fault;
 
 /////////////////////////////////////////////////////
 // Internal nets and registers
@@ -140,9 +146,13 @@ wire   miss;
 wire [`LM32_DTLB_ADDR_RNG] read_address;
 wire [`LM32_DTLB_ADDR_RNG] write_address;
 wire [`LM32_DTLB_DATA_RNG] write_data;
+wire [`LM32_DTLB_DATA_RNG] tlbe;
+wire [`LM32_DTLB_DATA_RNG] tlbe_inval;
 wire [`LM32_DTLB_TAG_RNG] tlbe_tag_x;
 wire [`LM32_DTLB_VPFN_RNG] tlbe_pfn_x;
 wire tlbe_valid_x;
+wire tlbe_ro_x;
+wire tlbe_ci_x;
 wire checking;
 wire flushing;
 wire write_port_enable;
@@ -180,7 +190,7 @@ lm32_ram
      .write_enable (write_port_enable),
      .write_data (write_data),
      // ----- Outputs -------
-     .read_data ({tlbe_pfn_x, tlbe_tag_x, tlbe_valid_x})
+     .read_data ({tlbe_pfn_x, tlbe_tag_x, tlbe_ci_x, tlbe_ro_x, tlbe_valid_x})
      );
 
 /////////////////////////////////////////////////////
@@ -201,13 +211,21 @@ assign physical_load_store_address_m = (enable == `FALSE)
                 ? address_m
                 : {tlbe_pfn_m, address_m[`LM32_DTLB_OFFSET_RNG]};
 
-assign write_data = ((invalidate == `TRUE) || (flushing))
-             ? {{`LM32_DTLB_DATA_WIDTH-1{1'b0}}, `FALSE}
-             : {tlbpaddr[`LM32_DTLB_VPFN_RNG], tlbvaddr[`LM32_DTLB_TAG_RNG], `TRUE};
+assign tlbe = {
+        tlbpaddr[`LM32_DTLB_VPFN_RNG],     // pfn
+        tlbvaddr[`LM32_DTLB_TAG_RNG],      // tag
+        tlbpaddr[2],                       // cache inhibit
+        tlbpaddr[1],                       // read only
+        `TRUE};                            // valid
+assign tlbe_inval = {{`LM32_DTLB_DATA_WIDTH-1{1'b0}}, `FALSE};
+assign write_data = ((invalidate == `TRUE) || (flushing)) ? tlbe_inval : tlbe;
+
 
 assign tlbe_match = ({tlbe_tag_x, tlbe_valid_x} == {address_x[`LM32_DTLB_TAG_RNG], `TRUE});
 
 assign miss = ((enable == `TRUE) && ((load_q_x == `TRUE) || (store_q_x == `TRUE)) && (tlbe_match == `FALSE) && (lookup == `FALSE));
+assign cache_inhibit = ((enable == `TRUE) && (tlbe_ci_x == `TRUE));
+assign fault = ((enable == `TRUE) && (store_q_x == `TRUE) && (tlbe_match == `TRUE) && (tlbe_ro_x == `TRUE));
 
 assign checking = state[0];
 assign flushing = state[1];

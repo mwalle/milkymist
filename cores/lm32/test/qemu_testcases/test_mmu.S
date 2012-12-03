@@ -78,6 +78,82 @@ test_name MMU_DTLB_UPDATE_2
     calli disable_dtlb
     check_excp 128
 
+test_name MMU_DTLB_FAULT_1
+    calli flush_dtlb
+    mvhi r1, hi(data2)
+    ori r1, r1, lo(data2)
+    mvhi r2, hi(data1)
+    ori r2, r2, lo(data1)
+    calli update_dtlb_ro
+    mv r3, r0
+    calli enable_dtlb
+    lw r3, (r1+0)
+    calli disable_dtlb
+    check_r3 0xdeadbabe
+
+test_name MMU_DTLB_FAULT_2
+    calli enable_dtlb
+1:
+    sw (r1+0), r0
+    calli disable_dtlb
+    check_excp 512
+
+test_name MMU_DTLB_FAULT_3
+    check_reg ea 1b
+
+test_name MMU_DTLB_FAULT_4
+    check_reg r24 data2
+
+test_name MMU_DTLB_CACHE_INHIBIT_1
+    mvhi r3, 0xaa55          # this is a test for the test below :)
+    ori r3, r3, 0xaa55
+    sw (r2+4), r3
+    calli flush_dtlb
+    mvhi r1, hi(data2)
+    ori r1, r1, lo(data2)
+    mvhi r2, hi(data1)
+    ori r2, r2, lo(data1)
+    calli update_dtlb
+    calli enable_dtlb
+    lw r3, (r1+4)
+    calli disable_dtlb
+
+    mvhi r3, 0x0010          # warning: dragons ahead
+    add r2, r2, r3           # due to memory wraparound, the new [r2] will
+    mvhi r3, 0x1234          # be an alias to the original one, but will
+    ori r3, r3, 0x5678       # index another cache line
+    sw (r2+4), r3
+
+    calli enable_dtlb
+    lw r3, (r1+4)
+    calli disable_dtlb
+    check_r3 0xaa55aa55      # because the value is fetched from cache
+
+test_name MMU_DTLB_CACHE_INHIBIT_2
+    mvhi r3, 0xaa55          # this is the same test as above, but the
+    ori r3, r3, 0xaa55       # tlb entry has the cache inhibit flag set
+    sw (r2+4), r3
+    calli flush_dtlb
+    mvhi r1, hi(data2)
+    ori r1, r1, lo(data2)
+    mvhi r2, hi(data1)
+    ori r2, r2, lo(data1)
+    calli update_dtlb_nocache
+    calli enable_dtlb
+    lw r3, (r1+4)
+    calli disable_dtlb
+
+    mvhi r3, 0x0010
+    add r2, r2, r3
+    mvhi r3, 0x1234
+    ori r3, r3, 0x5678
+    sw (r2+4), r3
+
+    calli enable_dtlb
+    lw r3, (r1+4)
+    calli disable_dtlb
+    check_r3 0x12345678      # .. therefore we expect the uncached value
+
 test_name MMU_DTLB_FLUSH
     calli enable_dtlb
     calli flush_dtlb
@@ -249,6 +325,20 @@ flush_dtlb:
 update_dtlb:
     ori r10, r1, 1
     ori r11, r2, 1
+    wcsr TLBVADDR, r10
+    wcsr TLBPADDR, r11
+    ret
+
+update_dtlb_ro:
+    ori r10, r1, 1
+    ori r11, r2, 3
+    wcsr TLBVADDR, r10
+    wcsr TLBPADDR, r11
+    ret
+
+update_dtlb_nocache:
+    ori r10, r1, 1
+    ori r11, r2, 5
     wcsr TLBVADDR, r10
     wcsr TLBPADDR, r11
     ret

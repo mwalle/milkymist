@@ -131,6 +131,7 @@ module lm32_load_store_unit (
 `ifdef CFG_MMU_ENABLED
     dtlb_stall_request,
     dtlb_miss,
+    dtlb_fault,
 `endif
     // To Wishbone
     d_dat_o,
@@ -232,6 +233,8 @@ output dtlb_stall_request;                              // Data TLB stall reques
 wire   dtlb_stall_request;
 output dtlb_miss;
 wire   dtlb_miss;
+output dtlb_fault;
+wire   dtlb_fault;
 `endif
 
 `ifdef CFG_IROM_ENABLED
@@ -316,6 +319,7 @@ reg wb_load_complete;                                   // Indicates when a Wish
 
 `ifdef CFG_MMU_ENABLED
 wire [`LM32_WORD_RNG] physical_load_store_address_m;
+wire cache_inhibit_x;
 `endif
 
 /////////////////////////////////////////////////////
@@ -433,7 +437,9 @@ lm32_dtlb dtlb (
     // ----- Outputs -----
     .physical_load_store_address_m (physical_load_store_address_m),
     .stall_request          (dtlb_stall_request),
-    .miss                   (dtlb_miss)
+    .miss                   (dtlb_miss),
+    .fault                  (dtlb_fault),
+    .cache_inhibit          (cache_inhibit_x)
     );
 `endif
 
@@ -502,6 +508,9 @@ lm32_dcache #(
 `endif
 `ifdef CFG_IROM_ENABLED
                             && (irom_select_x == `FALSE)
+`endif
+`ifdef CFG_MMU_ENABLED
+                            && (cache_inhibit_x == `FALSE)
 `endif
                      ;
 `endif
