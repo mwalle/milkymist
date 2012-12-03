@@ -109,6 +109,7 @@ build: $(CRT) $(TESTCASES) $(TESTCASES:.elf=.vh)
 check: $(TESTCASES:.elf=.vh)
 	@make -C .. tb_lm32
 	@for case in $(TESTCASES:.elf=.vh); do \
+		echo -e "\nRunning test case $$case"; \
 		vvp ../tb_lm32 +prog=$$case; \
 	done
 
