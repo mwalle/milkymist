@@ -238,22 +238,72 @@ test_name MMU_ITLB_EXCEPTION_1
 wcsr PSW, r0
 
 test_name MMU_USER_MODE_1
-    calli enable_user_mode
-    check_csr PSW 0x0200
-
-test_name MMU_USER_MODE_2
+	mvi r3, 0x200
+	wcsr PSW, r3
     wcsr PSW, r0
-    check_csr PSW 0x0200
+    check_csr PSW 0x200
+
+test_name MMU_USER_MODE_4
+	scall
+    check_csr PSW 0x400
+	wcsr PSW, r0
 
 test_name MMU_USER_MODE_3
+    calli enable_user_mode
+    wcsr IM, r0
     mvhi r3, 0xdead
     ori r3, r3, 0xbabe
     wcsr IM, r3
+    calli disable_user_mode
     check_csr IM 0x0
 
-test_name MMU_USER_MODE_4
+# eret should be a noop
+test_name MMU_USER_MODE_5
+    calli enable_user_mode
+    mvi r3, 1
+    mvhi ea, hi(1f)
+    ori ea, ea, lo(1f)
+    eret
+    mvi r3, 2
+1:
     calli disable_user_mode
-    check_csr PSW 0x0000
+    check_r3 1
+
+# bret should be a noop
+test_name MMU_USER_MODE_6
+    calli enable_user_mode
+    mvi r3, 1
+    mvhi ba, hi(1f)
+    ori ba, ba, lo(1f)
+    bret
+    mvi r3, 2
+1:
+    calli disable_user_mode
+    check_r3 1
+
+# eusr <- usr
+test_name MMU_USER_MODE_7
+    mvi r3, 0x400
+	wcsr PSW, r3
+    mvhi ea, hi(1f)
+    ori ea, ea, lo(1f)
+	eret
+1:
+    rcsr r3, PSW
+	calli disable_user_mode
+    check_r3 0x600
+
+# busr <- usr
+test_name MMU_USER_MODE_8
+    mvi r3, 0x800
+	wcsr PSW, r3
+    mvhi ba, hi(1f)
+    ori ba, ba, lo(1f)
+	bret
+1:
+    rcsr r3, PSW
+	calli disable_user_mode
+    check_r3 0xa00
 
 end
 
