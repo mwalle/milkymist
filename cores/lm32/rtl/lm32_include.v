@@ -277,7 +277,7 @@
 `define LM32_EID_DTLB_MISS              4'h8
 `define LM32_EID_ITLB_MISS              4'h9
 `define LM32_EID_DTLB_FAULT             4'ha
-`define LM32_EID_ITLB_FAULT             4'hb
+`define LM32_EID_PRIVILEGE              4'hb
 
 // Pipeline result selection mux controls
 

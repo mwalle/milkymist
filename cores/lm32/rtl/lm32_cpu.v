@@ -825,6 +825,7 @@ wire dtlb_fault_exception;
 wire dtlb_exception;
 wire itlb_miss_exception;
 wire itlb_exception;
+wire privilege_exception;
 wire dtlb_miss_x;
 wire dtlb_fault_x;
 wire itlb_miss_x;
@@ -1847,6 +1848,12 @@ assign dtlb_fault_exception = (   (dtlb_fault_x == `TRUE)
 			     );
 assign itlb_exception = (itlb_miss_exception == `TRUE);
 assign dtlb_exception = (dtlb_miss_exception == `TRUE) || (dtlb_fault_exception == `TRUE);
+assign privilege_exception = (   (usr == `TRUE)
+                              && (   (csr_write_enable_q_x == `TRUE)
+                                  || (eret_q_x == `TRUE)
+                                  || (bret_q_x == `TRUE)
+                                 )
+                             );
 `endif
 
 `ifdef CFG_DEBUG_ENABLED
@@ -1879,6 +1886,7 @@ assign non_debug_exception_x = (system_call_exception == `TRUE)
 `ifdef CFG_MMU_ENABLED
                             || (dtlb_exception == `TRUE)
                             || (itlb_exception == `TRUE)
+                            || (privilege_exception == `TRUE)
 `endif
                             ;
 
@@ -1906,6 +1914,7 @@ assign exception_x =           (system_call_exception == `TRUE)
 `ifdef CFG_MMU_ENABLED
                             || (dtlb_exception == `TRUE)
                             || (itlb_exception == `TRUE)
+                            || (privilege_exception == `TRUE)
 `endif
                             ;
 `endif
@@ -1964,6 +1973,9 @@ begin
     else
          if (itlb_miss_exception == `TRUE)
         eid_x = `LM32_EID_ITLB_MISS;
+	else
+         if (privilege_exception == `TRUE)
+        eid_x = `LM32_EID_PRIVILEGE;
 	else
 `endif
 		eid_x = `LM32_EID_SCALL;

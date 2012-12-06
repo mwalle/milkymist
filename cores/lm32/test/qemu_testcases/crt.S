@@ -112,3 +112,13 @@ _dtlb_fault_handler:
 	nop
 	nop
 	nop
+
+_privilege_exception_handler:
+	ori r25, r25, 1024
+	addi ra, ea, 4
+	ret
+	nop
+	nop
+	nop
+	nop
+	nop
