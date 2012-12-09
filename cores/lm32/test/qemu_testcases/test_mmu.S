@@ -36,7 +36,7 @@ test_name MMU_DTLB_MISS_2
     check_reg ea 1b
 
 test_name MMU_DTLB_MISS_3
-    check_reg r24 data2+0x1004
+    check_reg r24 data2+0x1004+1
 
 test_name MMU_DTLB_MISS_4
     calli enable_dtlb
@@ -103,7 +103,7 @@ test_name MMU_DTLB_FAULT_3
     check_reg ea 1b
 
 test_name MMU_DTLB_FAULT_4
-    check_reg r24 data2
+    check_reg r24 data2+1
 
 test_name MMU_DTLB_CACHE_INHIBIT_1
     mvhi r3, 0xaa55          # this is a test for the test below :)
