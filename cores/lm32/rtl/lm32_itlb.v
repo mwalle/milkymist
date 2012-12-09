@@ -190,7 +190,7 @@ assign write_address = (flushing == `TRUE) ? flush_set : tlbvaddr[`LM32_ITLB_IDX
 assign read_port_enable = (stall_a == `FALSE);
 assign write_port_enable = (update == `TRUE) || (invalidate == `TRUE) || (flushing == `TRUE);
 
-assign write_data = (flushing == `TRUE)
+assign write_data = ((invalidate == `TRUE) || (flushing == `TRUE))
              ? {{`LM32_ITLB_DATA_WIDTH-1{1'b0}}, `FALSE}
              : {tlbpaddr[`LM32_ITLB_VPFN_RNG], tlbvaddr[`LM32_ITLB_TAG_RNG], `TRUE};
 
