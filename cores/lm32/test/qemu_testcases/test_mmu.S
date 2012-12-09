@@ -3,8 +3,9 @@
 initial_page:
 start
 
-# The following placeholder will be replaced by a variable count of NOPs.
-# The idea is to move the code around, so that a restart due to a
+# This code is shared between QEMU and the milkymist test bench. In the
+# latter the following placeholder will be replaced by a variable count of
+# NOPs. The idea is to move the code around, so that a restart due to a
 # instruction cache miss will be at different places.
 ##NOPS##
 
@@ -226,6 +227,33 @@ test_name MMU_ITLB_MISS_5
     calli flush_icache
     calli enable_itlb
     calli code2+0x1004      # provoke instruction cache restart request
+    check_excp 256
+
+test_name MMU_ITLB_INV
+    mvhi r1, hi(code2)
+    ori r1, r1, lo(code2)
+    calli flush_icache
+    calli enable_itlb
+    calli invalidate_itlb
+    mvhi ra, hi(1f)
+    ori ra, ra, lo(1f)
+    bi code2
+1:
+    check_excp 256
+
+test_name MMU_ITLB_FLUSH
+    calli flush_itlb
+    # reload testcode mapping again
+    mvhi r1, hi(initial_page)
+    ori r1, r1, lo(initial_page)
+    mv r2, r1
+    calli update_itlb
+    
+    calli enable_itlb
+    mvhi ra, hi(1f)
+    ori ra, ra, lo(1f)
+    bi code1
+1:
     check_excp 256
 
 test_name MMU_ITLB_EXCEPTION_1
