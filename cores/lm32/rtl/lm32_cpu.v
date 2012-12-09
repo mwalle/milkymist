@@ -2463,7 +2463,7 @@ begin
         if (stall_x == `FALSE)
         begin
             if ((stall_x == `FALSE) && (dtlb_exception == `TRUE))
-                tlbvaddr <= adder_result_x;
+                tlbvaddr <= {adder_result_x[`LM32_WORD_WIDTH-1:1], 1'b1};
             else if (itlb_exception == `TRUE)
                 tlbvaddr <= {pc_x, {`LM32_WORD_WIDTH-`LM32_PC_WIDTH{1'b0}}};
             else if ((csr_write_enable_k_q_x == `TRUE) && (csr_x == `LM32_CSR_TLBVADDR))
