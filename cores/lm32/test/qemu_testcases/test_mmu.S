@@ -28,7 +28,7 @@ test_name MMU_DTLB_ON
 test_name MMU_DTLB_MISS_1
     calli enable_dtlb
 1:
-    lw r3, (r1+0x1004)
+    lb r3, (r1+0x1fff)
     calli disable_dtlb
     check_excp 128
 
@@ -36,7 +36,7 @@ test_name MMU_DTLB_MISS_2
     check_reg ea 1b
 
 test_name MMU_DTLB_MISS_3
-    check_reg r24 data2+0x1004+1
+    check_reg r24 data2+0x1000+1  # page mask already applied
 
 test_name MMU_DTLB_MISS_4
     calli enable_dtlb
@@ -103,7 +103,7 @@ test_name MMU_DTLB_FAULT_3
     check_reg ea 1b
 
 test_name MMU_DTLB_FAULT_4
-    check_reg r24 data2+1
+    check_reg r24 data2+1    # page mask already applied
 
 test_name MMU_DTLB_CACHE_INHIBIT_1
     mvhi r3, 0xaa55          # this is a test for the test below :)
@@ -207,14 +207,14 @@ test_name MMU_ITLB_CACHE_ALIAS
 
 test_name MMU_ITLB_MISS_1
     calli enable_itlb
-    calli code2+0x1004
+    calli code2+0x1ffc
     check_excp 256
 
 test_name MMU_ITLB_MISS_2
-    check_reg ea code2+0x1004
+    check_reg ea code2+0x1ffc
 
 test_name MMU_ITLB_MISS_3
-    check_reg r24 code2+0x1004
+    check_reg r24 code2+0x1000    # page mask already applied
 
 test_name MMU_ITLB_MISS_4
     calli flush_dcache
@@ -248,7 +248,7 @@ test_name MMU_ITLB_FLUSH
     ori r1, r1, lo(initial_page)
     mv r2, r1
     calli update_itlb
-    
+
     calli enable_itlb
     mvhi ra, hi(1f)
     ori ra, ra, lo(1f)
