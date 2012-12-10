@@ -818,6 +818,7 @@ reg itlb_update;
 reg dtlb_update;
 reg [`LM32_WORD_RNG] tlbpaddr;
 reg [`LM32_WORD_RNG] tlbvaddr;
+reg [`LM32_WORD_RNG] tlbbadvaddr;
 wire [`LM32_WORD_RNG] dtlb_miss_vfn;
 wire [`LM32_WORD_RNG] itlb_miss_vfn;
 wire dtlb_stall_request;                        // Stall pipeline because data TLB is busy
@@ -2341,7 +2342,7 @@ begin
 `ifdef CFG_MMU_ENABLED
     `LM32_CSR_PSW:	csr_read_data_x = csr_psw_read_data_x;
     `LM32_CSR_TLBVADDR: csr_read_data_x = tlbvaddr;
-    `LM32_CSR_TLBPADDR: csr_read_data_x = tlbpaddr;
+    `LM32_CSR_TLBBADVADDR: csr_read_data_x = tlbbadvaddr;
 `endif
     default:        csr_read_data_x = {`LM32_WORD_WIDTH{1'bx}};
     endcase
@@ -2513,6 +2514,23 @@ begin
                 itlb_update <= `TRUE;
             if (operand_1_x[0] == 1'b1)
                 dtlb_update <= `TRUE;
+        end
+    end
+end
+
+// TLBBADVADDR CSR
+always @(posedge clk_i `CFG_RESET_SENSITIVITY)
+begin
+    if (rst_i == `TRUE)
+        tlbbadvaddr <= {`LM32_WORD_WIDTH{1'b0}};
+    else
+    begin
+        if (stall_x == `FALSE)
+        begin
+            if (dtlb_exception == `TRUE)
+                tlbbadvaddr <= adder_result_x;
+            else if (itlb_exception == `TRUE)
+                tlbbadvaddr <= {pc_x, {`LM32_WORD_WIDTH-`LM32_PC_WIDTH{1'b0}}};
         end
     end
 end

@@ -248,7 +248,8 @@
 `ifdef CFG_MMU_ENABLED
 `define LM32_CSR_PSW                    `LM32_CSR_WIDTH'h1d
 `define LM32_CSR_TLBVADDR               `LM32_CSR_WIDTH'h1e
-`define LM32_CSR_TLBPADDR               `LM32_CSR_WIDTH'h1f
+`define LM32_CSR_TLBPADDR               `LM32_CSR_WIDTH'h1f  // write only
+`define LM32_CSR_TLBBADVADDR            `LM32_CSR_WIDTH'h1f  // read only
 
 `define LM32_TLB_OP_RNG                 5:1
 `define LM32_TLB_OP_NOOP                5'h0
