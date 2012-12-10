@@ -130,6 +130,7 @@ module lm32_load_store_unit (
     stall_wb_load,
 `ifdef CFG_MMU_ENABLED
     dtlb_stall_request,
+    dtlb_miss_vfn,
     dtlb_miss,
     dtlb_fault,
 `endif
@@ -231,6 +232,8 @@ wire   dcache_refilling;
 `ifdef CFG_MMU_ENABLED
 output dtlb_stall_request;                              // Data TLB stall request
 wire   dtlb_stall_request;
+output [`LM32_WORD_RNG] dtlb_miss_vfn;
+wire   [`LM32_WORD_RNG] dtlb_miss_vfn;
 output dtlb_miss;
 wire   dtlb_miss;
 output dtlb_fault;
@@ -437,6 +440,7 @@ lm32_dtlb dtlb (
     // ----- Outputs -----
     .physical_load_store_address_m (physical_load_store_address_m),
     .stall_request          (dtlb_stall_request),
+    .miss_vfn               (dtlb_miss_vfn),
     .miss                   (dtlb_miss),
     .fault                  (dtlb_fault),
     .cache_inhibit          (cache_inhibit_x)

@@ -156,6 +156,7 @@ module lm32_instruction_unit (
 `endif
 `ifdef CFG_MMU_ENABLED
     itlb_stall_request,
+    itlb_miss_vfn,
     itlb_miss_x,
 `endif
 `ifdef CFG_IWB_ENABLED
@@ -354,6 +355,8 @@ reg    [`LM32_INSTRUCTION_RNG] instruction_d;
 `ifdef CFG_MMU_ENABLED
 output itlb_stall_request;                              // Instruction TLB stall request
 wire   itlb_stall_request;
+output [`LM32_WORD_RNG] itlb_miss_vfn;
+wire   [`LM32_WORD_RNG] itlb_miss_vfn;
 output itlb_miss_x;
 wire   itlb_miss_x;
 `endif
@@ -483,6 +486,7 @@ lm32_itlb itlb (
     .stall_x                (stall_x),
     .pc_a                   (pc_a),
     .pc_f                   (pc_f),
+    .pc_x                   (pc_x),
     .read_enable_f          (icache_read_enable_f),
     .tlbpaddr               (tlbpaddr),
     .tlbvaddr               (tlbvaddr),
@@ -492,6 +496,7 @@ lm32_itlb itlb (
     // ----- Outputs -----
     .physical_pc_f          (physical_pc_f),
     .stall_request          (itlb_stall_request),
+    .miss_vfn               (itlb_miss_vfn),
     .miss_f                 (itlb_miss_f),
     .miss_x                 (itlb_miss_x)
     );

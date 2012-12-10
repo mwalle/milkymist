@@ -62,6 +62,7 @@ module lm32_itlb (
     stall_x,
     pc_a,
     pc_f,
+    pc_x,
     read_enable_f,
     tlbpaddr,
     tlbvaddr,
@@ -71,6 +72,7 @@ module lm32_itlb (
     // ----- Outputs -------
     physical_pc_f,
     stall_request,
+    miss_vfn,
     miss_f,
     miss_x
     );
@@ -110,6 +112,7 @@ input stall_x;                          // Stall instruction in X stage
 
 input [`LM32_PC_RNG] pc_a;              // Address of instruction in A stage
 input [`LM32_PC_RNG] pc_f;              // Address of instruction in F stage
+input [`LM32_PC_RNG] pc_x;              // Address of instruction in X stage
 
 input read_enable_f;                    // Indicates if cache access is valid
 
@@ -126,6 +129,8 @@ output [`LM32_PC_RNG] physical_pc_f;
 reg    [`LM32_PC_RNG] physical_pc_f;
 output stall_request;
 wire   stall_request;
+output [`LM32_WORD_RNG] miss_vfn;
+wire   [`LM32_WORD_RNG] miss_vfn;
 output miss_f;
 wire   miss_f;
 output miss_x;
@@ -195,6 +200,8 @@ assign write_data = ((invalidate == `TRUE) || (flushing == `TRUE))
              : {tlbpaddr[`LM32_ITLB_VPFN_RNG], tlbvaddr[`LM32_ITLB_TAG_RNG], `TRUE};
 
 assign tlbe_match_f = ({tlbe_tag_f, tlbe_valid_f} == {pc_f[`LM32_ITLB_TAG_RNG], `TRUE});
+
+assign miss_vfn = {pc_x[`LM32_ITLB_VPFN_RNG], {offset_width{1'b0}}, 2'b0};
 assign miss_f = (enable == `TRUE) && (tlbe_match_f == `FALSE) && (stall_f == `FALSE);
 
 assign flushing = state[1];

@@ -72,6 +72,7 @@ module lm32_dtlb (
     // ----- Outputs -----
     physical_load_store_address_m,
     stall_request,
+    miss_vfn,
     miss,
     cache_inhibit,
     fault
@@ -132,6 +133,8 @@ output [`LM32_WORD_RNG] physical_load_store_address_m;
 wire   [`LM32_WORD_RNG] physical_load_store_address_m;
 output stall_request;
 wire   stall_request;
+output [`LM32_WORD_RNG] miss_vfn;
+wire   [`LM32_WORD_RNG] miss_vfn;
 output miss;
 wire   miss;
 output cache_inhibit;
@@ -223,6 +226,7 @@ assign write_data = ((invalidate == `TRUE) || (flushing)) ? tlbe_inval : tlbe;
 
 assign tlbe_match = ({tlbe_tag_x, tlbe_valid_x} == {address_x[`LM32_DTLB_TAG_RNG], `TRUE});
 
+assign miss_vfn = {address_x[`LM32_DTLB_VPFN_RNG], {offset_width{1'b0}}};
 assign miss = ((enable == `TRUE) && ((load_q_x == `TRUE) || (store_q_x == `TRUE)) && (tlbe_match == `FALSE) && (lookup == `FALSE));
 assign cache_inhibit = ((enable == `TRUE) && (tlbe_ci_x == `TRUE));
 assign fault = ((enable == `TRUE) && (store_q_x == `TRUE) && (tlbe_match == `TRUE) && (tlbe_ro_x == `TRUE));
