@@ -113,7 +113,7 @@ check: $(TESTCASES:.elf=.vh)
 		vvp ../tb_lm32 +prog=$$case; \
 	done
 
-check_%: %.vh
+check_%: test_%.vh
 	@make -C .. tb_lm32
 	vvp ../tb_lm32 +prog=$<
 
