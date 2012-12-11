@@ -354,7 +354,12 @@ endgenerate
 
 // On the last refill cycle set the valid bit, for all other writes it should be cleared
 assign tmem_write_data[`LM32_IC_TAGS_VALID_RNG] = last_refill & !flushing;
-assign tmem_write_data[`LM32_IC_TAGS_TAG_RNG] = physical_refill_address[`LM32_IC_ADDR_TAG_RNG];
+assign tmem_write_data[`LM32_IC_TAGS_TAG_RNG] =
+`ifdef CFG_MMU_ENABLED
+	physical_refill_address[`LM32_IC_ADDR_TAG_RNG];
+`else
+	refill_address[`LM32_IC_ADDR_TAG_RNG];
+`endif
 
 // Signals that indicate which state we are in
 assign flushing = |state[1:0];
