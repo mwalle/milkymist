@@ -137,9 +137,6 @@ module lm32_instruction_unit (
 `endif
     // ----- Outputs -------
     // To pipeline
-`ifdef CFG_PIPELINE_TRACES
-    pc_a,
-`endif
     pc_f,
     pc_d,
     pc_x,
@@ -366,9 +363,6 @@ wire   itlb_miss_x;
 /////////////////////////////////////////////////////
 
 reg [`LM32_PC_RNG] pc_a;                                // A stage PC
-`ifdef CFG_PIPELINE_TRACES
-output [`LM32_PC_RNG] pc_a;
-`endif
 
 `ifdef LM32_CACHE_ENABLED
 reg [`LM32_PC_RNG] restart_address;                     // Address to restart from after a cache miss
@@ -567,9 +561,6 @@ begin
 `ifdef CFG_DCACHE_ENABLED
     if (dcache_restart_request == `TRUE)
     begin
-`ifdef CFG_PIPELINE_TRACES
-        $display("[%t] We restart to 0x%08X because of DCACHE", $time, restart_address);
-`endif
         pc_a = restart_address;
     end
     else
@@ -577,16 +568,10 @@ begin
       if (branch_taken_m == `TRUE)
 	if ((branch_mispredict_taken_m == `TRUE) && (exception_m == `FALSE))
         begin
-`ifdef CFG_PIPELINE_TRACES
-	  $display("[%t] Mispredict, goto pc_x == 0x%08X", $time, pc_x);
-`endif
 	  pc_a = pc_x;
         end
 	else
         begin
-`ifdef CFG_PIPELINE_TRACES
-          $display("[%t] Correctly predicted, goto branch_target_m == 0x%08X", $time, branch_target_m);
-`endif
           pc_a = branch_target_m;
         end
 `ifdef CFG_FAST_UNCONDITIONAL_BRANCH
@@ -596,18 +581,12 @@ begin
       else
 	if ( (valid_d == `TRUE) && (branch_predict_taken_d == `TRUE) )
         begin
-`ifdef CFG_PIPELINE_TRACES
-          $display("[%t] We go to branch_predict_address_d == 0x%08X", $time, branch_predict_address_d);
-`endif
 	  pc_a = branch_predict_address_d;
         end
 	else
 `ifdef CFG_ICACHE_ENABLED
           if (icache_restart_request == `TRUE)
           begin
-`ifdef CFG_PIPELINE_TRACES
-            $display("[%t] We restart to 0x%08X because of ICACHE", $time, restart_address);
-`endif
             pc_a = restart_address;
           end
 	  else
