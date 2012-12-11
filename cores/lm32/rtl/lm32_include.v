@@ -251,10 +251,10 @@
 `define LM32_CSR_TLBPADDR               `LM32_CSR_WIDTH'h1f  // write only
 `define LM32_CSR_TLBBADVADDR            `LM32_CSR_WIDTH'h1f  // read only
 
-`define LM32_TLB_OP_RNG                 5:1
-`define LM32_TLB_OP_NOOP                5'h0
-`define LM32_TLB_OP_FLUSH               5'h1
-`define LM32_TLB_OP_INVALIDATE          5'h2
+`define LM32_TLB_OP_RNG                 2:1
+`define LM32_TLB_OP_NOOP                2'h0
+`define LM32_TLB_OP_FLUSH               2'h1
+`define LM32_TLB_OP_INVALIDATE          2'h2
 `endif
 
 // Values for WPC CSR
