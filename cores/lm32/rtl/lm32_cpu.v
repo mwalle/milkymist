@@ -645,7 +645,6 @@ wire [`LM32_PC_RNG] pc_d;                       // PC of instruction in D stage
 wire [`LM32_PC_RNG] pc_x;                       // PC of instruction in X stage
 wire [`LM32_PC_RNG] pc_m;                       // PC of instruction in M stage
 wire [`LM32_PC_RNG] pc_w;                       // PC of instruction in W stage
-
 `ifdef CFG_TRACE_ENABLED
 reg [`LM32_PC_RNG] pc_c;                        // PC of last commited instruction
 `endif
@@ -2321,6 +2320,7 @@ begin
     `LM32_CSR_TLBVADDR: csr_read_data_x = tlbvaddr;
     `LM32_CSR_TLBBADVADDR: csr_read_data_x = tlbbadvaddr;
 `endif
+
     default:        csr_read_data_x = {`LM32_WORD_WIDTH{1'bx}};
     endcase
 end

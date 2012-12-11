@@ -305,9 +305,7 @@ genvar i, j;
 generate
     for (i = 0; i < associativity; i = i + 1)
     begin : match
-
-assign way_match[i] =
-        ({way_tag[i], way_valid[i]} == {address_m[`LM32_DC_ADDR_TAG_RNG], `TRUE});
+assign way_match[i] = ({way_tag[i], way_valid[i]} == {address_m[`LM32_DC_ADDR_TAG_RNG], `TRUE});
     end
 endgenerate
 
@@ -456,7 +454,7 @@ begin
         state <= `LM32_DC_STATE_FLUSH;
         flush_set <= {`LM32_DC_TMEM_ADDR_WIDTH{1'b1}};
         refill_request <= `FALSE;
-        refill_address <= {`LM32_WORD_WIDTH{1'b0}};
+        refill_address <= {`LM32_WORD_WIDTH{1'bx}};
         restart_request <= `FALSE;
     end
     else
@@ -504,7 +502,6 @@ begin
     end
 end
 
-
 generate
     if (bytes_per_line > 4)
     begin
@@ -540,3 +537,4 @@ endgenerate
 endmodule
 
 `endif
+

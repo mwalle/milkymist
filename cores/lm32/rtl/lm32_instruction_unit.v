@@ -560,35 +560,25 @@ begin
     // The request from the latest pipeline stage must take priority
 `ifdef CFG_DCACHE_ENABLED
     if (dcache_restart_request == `TRUE)
-    begin
         pc_a = restart_address;
-    end
     else
 `endif
       if (branch_taken_m == `TRUE)
 	if ((branch_mispredict_taken_m == `TRUE) && (exception_m == `FALSE))
-        begin
 	  pc_a = pc_x;
-        end
 	else
-        begin
           pc_a = branch_target_m;
-        end
 `ifdef CFG_FAST_UNCONDITIONAL_BRANCH
       else if (branch_taken_x == `TRUE)
         pc_a = branch_target_x;
 `endif
       else
 	if ( (valid_d == `TRUE) && (branch_predict_taken_d == `TRUE) )
-        begin
 	  pc_a = branch_predict_address_d;
-        end
 	else
 `ifdef CFG_ICACHE_ENABLED
           if (icache_restart_request == `TRUE)
-          begin
             pc_a = restart_address;
-          end
 	  else
 `endif
             pc_a = pc_f + 1'b1;

@@ -57,6 +57,7 @@
 `include "lm32_include.v"
 
 `ifdef CFG_ICACHE_ENABLED
+
 `define LM32_IC_ADDR_OFFSET_RNG          addr_offset_msb:addr_offset_lsb
 `define LM32_IC_ADDR_SET_RNG             addr_set_msb:addr_set_lsb
 `define LM32_IC_ADDR_TAG_RNG             addr_tag_msb:addr_tag_lsb
@@ -78,10 +79,10 @@
 `define LM32_IC_STATE_CHECK              4'b0100
 `define LM32_IC_STATE_REFILL             4'b1000
 
-
 /////////////////////////////////////////////////////
 // Module interface
 /////////////////////////////////////////////////////
+
 module lm32_icache (
     // ----- Inputs -----
     clk_i,
@@ -216,8 +217,7 @@ reg [`LM32_IC_ADDR_OFFSET_RNG] refill_offset;
 wire last_refill;
 reg [`LM32_IC_TMEM_ADDR_RNG] flush_set;
 
-genvar i, j;
-
+genvar i;
 
 /////////////////////////////////////////////////////
 // Functions
@@ -327,7 +327,6 @@ assign tmem_write_address = flushing
                                 ? flush_set
                                 : refill_address[`LM32_IC_ADDR_SET_RNG];
 
-
 // Compute signal to indicate when we are on the last refill accesses
 generate
     if (bytes_per_line > 4)
@@ -407,7 +406,7 @@ begin
     begin
         state <= `LM32_IC_STATE_FLUSH_INIT;
         flush_set <= {`LM32_IC_TMEM_ADDR_WIDTH{1'b1}};
-        refill_address <= {`LM32_PC_WIDTH{1'b0}};
+        refill_address <= {`LM32_PC_WIDTH{1'bx}};
         restart_request <= `FALSE;
     end
     else
